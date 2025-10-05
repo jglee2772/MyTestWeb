@@ -12,6 +12,9 @@ COPY gradlew ./
 # Gradle Wrapper 실행 권한 부여
 RUN chmod +x ./gradlew
 
+# Gradle Wrapper JAR 파일 다운로드
+RUN curl -o gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.5.0/gradle/wrapper/gradle-wrapper.jar
+
 # 의존성 다운로드 (캐시 최적화)
 RUN ./gradlew dependencies --no-daemon
 
