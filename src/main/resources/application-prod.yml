@@ -1,7 +1,10 @@
+# 프로덕션 환경 설정
 server:
   port: ${PORT:8080}
 
 spring:
+  profiles:
+    active: prod
   application:
     name: MyTestWeb
   
@@ -27,7 +30,7 @@ spring:
   sql:
     init:
       mode: always
-      data-locations: classpath:data-prod.sql
+      data-locations: classpath:data-postgresql.sql
   
   # H2 콘솔 활성화 (임시)
   h2:

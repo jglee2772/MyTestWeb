@@ -37,6 +37,12 @@ public class HomeController {
         return "about";
     }
 
+    @GetMapping("/locked-lock")
+    public String lockedLock(Model model) {
+        addUserToModel(model);
+        return "locked-lock";
+    }
+
     private void addUserToModel(Model model) {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.isAuthenticated() && !auth.getName().equals("anonymousUser")) {

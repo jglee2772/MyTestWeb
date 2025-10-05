@@ -1,0 +1,968 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>봉인된 자물쇠 - MyTestWeb</title>
+    <link rel="stylesheet" href="/css/dnf-lock.css">
+</head>
+<body>
+    <!-- 네비게이션 바 -->
+    <nav class="navbar">
+        <div class="nav-container">
+            <div class="nav-brand">
+                <a href="/">MyTestWeb</a>
+            </div>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">홈</a></li>
+                <li><a href="/about" class="nav-link">소개</a></li>
+                <li><a href="/hello" class="nav-link">실시간 채팅</a></li>
+                <li><a href="/locked-lock" class="nav-link">봉인된 자물쇠</a></li>
+                <li th:if="${user != null}" class="user-info">
+                    <span class="user-name" th:text="${user.username}">사용자</span>
+                    <form th:action="@{/logout}" method="post" style="display: inline;">
+                        <button type="submit" class="logout-link">로그아웃</button>
+                    </form>
+                    <a th:if="${user.isAdmin}" href="/admin" class="admin-link">관리자</a>
+                </li>
+                <li th:unless="${user != null}">
+                    <a href="/login" class="nav-link">로그인</a>
+                    <a href="/register" class="nav-link">회원가입</a>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <!-- 던전앤파이터 스타일 컨테이너 -->
+    <div class="dnf-container">
+        <!-- 상단 헤더 -->
+        <div class="dnf-header">
+            <div class="user-title">
+                <span class="user-name" th:text="${user != null ? user.username : '게스트'}">게스트</span>님의 공개 봉자
+            </div>
+            <div class="booster-info">
+                <div class="booster-icon">B</div>
+                <div class="booster-text">booster x2</div>
+            </div>
+        </div>
+
+        <!-- 중앙 보물상자 영역 -->
+        <div class="treasure-area">
+            <!-- 좌측 기어 -->
+            <div class="gear-left"></div>
+            
+            <!-- 보물상자 -->
+            <div class="treasure-chest-container">
+                <div class="treasure-chest" id="treasureChest">
+                    <div class="chest-body">
+                        <div class="chest-lock">
+                            <div class="lock-keyhole"></div>
+                        </div>
+                    </div>
+                    <div class="chest-glow" id="chestGlow"></div>
+                </div>
+                
+                <!-- 획득 아이템 표시 영역 -->
+                <div class="treasure-items" id="treasureItems"></div>
+            </div>
+            
+            <!-- 우측 기어 -->
+            <div class="gear-right"></div>
+        </div>
+
+        <!-- 하단 컨트롤 패널 -->
+        <div class="dnf-controls">
+            <!-- 좌측: 부스터 + 요구재료 -->
+            <div class="control-left">
+                <div class="booster-section">
+                    <div class="booster-icon">🚀</div>
+                    <div class="booster-bar">
+                        <div class="booster-progress" id="boostBar"></div>
+                    </div>
+                    <div class="booster-text" id="boostText">0/100</div>
+                </div>
+                <div class="requirement-info">
+                    <span class="requirement-label">요구재료</span>
+                    <span class="requirement-keys">🔑 X3</span>
+                </div>
+            </div>
+
+            <!-- 중앙: 자물쇠 선택 -->
+            <div class="control-center">
+                <div class="lock-selection">
+                        <div class="lock-option selected" id="lockOption1" onclick="selectLock(1)">
+                            <div class="lock-icon">
+                                <div class="lock-number">∞</div>
+                            </div>
+                            <span class="lock-name">봉인된 자물쇠</span>
+                            <div class="radio-button selected"></div>
+                        </div>
+                    
+                    <div class="lock-option" id="lockOption2" onclick="selectLock(2)">
+                        <div class="lock-icon diamond">
+                            <div class="lock-number" id="diamondLockCount">0</div>
+                        </div>
+                        <span class="lock-name">[M]봉인된 다이아몬드 자물쇠</span>
+                        <div class="radio-button"></div>
+                    </div>
+                </div>
+                <div class="instruction">
+                    해방할 자물쇠를 선택해 주세요. (변경: TAB)
+                </div>
+            </div>
+
+            <!-- 우측: 보유 열쇠 -->
+            <div class="control-right">
+                <div class="possession-info">
+                    <span class="possession-label">보유한 해방의 열쇠</span>
+                    <span class="possession-keys">🔑 X<span id="keyCount">0</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 액션 버튼 -->
+        <div class="action-buttons">
+            <button class="unlock-btn" id="unlockButton" onclick="attemptUnlock()">
+                🔓 해방하기
+            </button>
+            <button class="purchase-btn" onclick="showPurchaseModal()">
+                🔑 열쇠 구매
+            </button>
+        </div>
+
+        <!-- 결과 표시 -->
+        <div class="lock-result" id="lockResult">
+            <div class="result-content">
+                <div class="result-icon" id="resultIcon">🔓</div>
+                <div class="result-text" id="resultText">자물쇠를 열어보세요!</div>
+            </div>
+        </div>
+
+
+        <!-- 통계 섹션 -->
+        <div class="lock-stats">
+            <h3>📊 통계</h3>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <span class="stat-label">소모 열쇠</span>
+                    <span class="stat-value" id="totalKeysUsed">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">소모 자물쇠</span>
+                    <span class="stat-value" id="totalLocksUsed">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">누적 소모 금액</span>
+                    <span class="stat-value" id="totalSpent">0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- 히스토리 섹션 -->
+        <div class="lock-history">
+            <h3>📜 히스토리</h3>
+            <div class="history-list" id="historyList">
+                <div class="history-empty">아직 기록이 없습니다.</div>
+            </div>
+            
+            <!-- 누적 아이템 목록 -->
+            <div class="accumulated-items" id="accumulatedItems" style="display: none;">
+                <h4>🎁 누적 획득 아이템</h4>
+                <div class="accumulated-list" id="accumulatedList">
+                    <div class="accumulated-empty">아직 획득한 아이템이 없습니다.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 열쇠 구매 모달 -->
+    <div class="purchase-modal" id="purchaseModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>🔑 열쇠 구매</h3>
+                <button class="close-btn" onclick="hidePurchaseModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="gold-info">
+                    <span class="gold-label">누적 소모 금액</span>
+                    <span class="gold-amount" id="modalTotalSpent">0</span>
+                </div>
+                <div class="purchase-options">
+                    <div class="purchase-option" onclick="purchaseKeys(100)">
+                        <div class="option-icon">🔑</div>
+                        <div class="option-info">
+                            <div class="option-name">100개</div>
+                            <div class="option-price">27,000골드</div>
+                        </div>
+                    </div>
+                    <div class="purchase-option" onclick="purchaseKeys(200)">
+                        <div class="option-icon">🔑</div>
+                        <div class="option-info">
+                            <div class="option-name">200개</div>
+                            <div class="option-price">54,000골드</div>
+                        </div>
+                    </div>
+                    <div class="purchase-option" onclick="purchaseKeys(300)">
+                        <div class="option-icon">🔑</div>
+                        <div class="option-info">
+                            <div class="option-name">300개</div>
+                            <div class="option-price">81,000골드</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 게임 상태
+        let gameState = {
+            keyCount: 0,
+            totalKeysUsed: 0,
+            totalLocksUsed: 0,
+            totalSpent: 0,
+            diamondLockCount: 0,
+            selectedLock: 1,
+            history: [],
+            accumulatedItems: {}, // 누적 아이템 저장
+            isRareItemDelay: false, // 레어 아이템 지연 상태
+            boostGauge: 0, // 부스트 게이지 (0-100)
+            isBoostActive: false // 부스트 활성화 상태
+        };
+
+        // 열쇠 구매 가격 (100개당 27,000골드)
+        const keyPrice = 270;
+
+        // 첫 번째 아이템 데이터베이스 (실제 던파 확률)
+        const firstItems = [
+            { name: "시브의 보조장비 보주", count: 1, rate: 0.1875, value: 40000000, icon: "💎" },
+            { name: "무기 강화권[리노] 상자", count: 1, rate: 0.2500, value: 20000000, icon: "⚔️" },
+            { name: "그랜드 마스터 계약 패키지 15일 상자", count: 1, rate: 0.4000, value: 10000000, icon: "📦" },
+            { name: "고대의 황금 증폭서", count: 1, rate: 0.0350, value: 0, icon: "📜" },
+            { name: "장비 보호권", count: 1, rate: 0.0350, value: 0, icon: "🛡️" },
+            { name: "증폭 보호권", count: 1, rate: 0.0350, value: 0, icon: "🔒" },
+            { name: "해방된 칼레이도 박스", count: 1, rate: 4.0000, value: 0, icon: "📦" },
+            { name: "해방된 칼레이도 박스", count: 10, rate: 0.4000, value: 0, icon: "📦" },
+            { name: "해방된 칼레이도 박스", count: 30, rate: 0.1300, value: 0, icon: "📦" },
+            { name: "칸나의 맛있는 수제빵", count: 10, rate: 13.9138, value: 0, icon: "🍞" },
+            { name: "칸나의 맛있는 수제빵", count: 20, rate: 7.0000, value: 0, icon: "🍞" },
+            { name: "칸나의 맛있는 수제빵", count: 50, rate: 3.5000, value: 0, icon: "🍞" },
+            { name: "칸나의 맛있는 우유", count: 10, rate: 13.9137, value: 0, icon: "🥛" },
+            { name: "칸나의 맛있는 우유", count: 20, rate: 7.0000, value: 0, icon: "🥛" },
+            { name: "칸나의 맛있는 우유", count: 50, rate: 3.5000, value: 0, icon: "🥛" },
+            { name: "패왕의 계약 3일", count: 1, rate: 5.5000, value: 0, icon: "📋" },
+            { name: "달인의 계약 3일", count: 1, rate: 5.5000, value: 0, icon: "📋" },
+            { name: "성장의 계약 3일", count: 1, rate: 5.5000, value: 0, icon: "📋" },
+            { name: "큐브의 계약 7일", count: 1, rate: 5.5000, value: 0, icon: "📋" },
+            { name: "응축된 라이언 코어", count: 10, rate: 4.0333, value: 0, icon: "💎" },
+            { name: "응축된 라이언 코어", count: 30, rate: 4.0333, value: 0, icon: "💎" },
+            { name: "응축된 라이언 코어", count: 50, rate: 4.0333, value: 0, icon: "💎" },
+            { name: "빛나는 조화의 결정체", count: 10, rate: 1.5667, value: 0, icon: "✨" },
+            { name: "빛나는 조화의 결정체", count: 30, rate: 1.5667, value: 0, icon: "✨" },
+            { name: "빛나는 조화의 결정체", count: 50, rate: 1.5667, value: 0, icon: "✨" },
+            { name: "종말의 계시 1개 상자", count: 10, rate: 1.0000, value: 0, icon: "📦" },
+            { name: "종말의 계시 1개 상자", count: 20, rate: 0.5000, value: 0, icon: "📦" },
+            { name: "상공인협의회 은화", count: 10, rate: 1.6000, value: 0, icon: "🪙" },
+            { name: "상공인협의회 은화", count: 20, rate: 1.5000, value: 0, icon: "🪙" },
+            { name: "상공인협의회 은화", count: 30, rate: 1.5000, value: 0, icon: "🪙" },
+            { name: "마스터 칼레이도 박스[계정귀속]", count: 1, rate: 0.1000, value: 0, icon: "📦" },
+            // 플래티넘 엠블렘들 (0.01% 확률)
+            { name: "플래티넘 엠블렘[용맹의 축복]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[영광의 축복]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[임무 시작]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[오버드라이브]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[데스 바이 리볼버]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[페이스풀]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[신검합일]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[전장의 여신]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[잔영의 케이가]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[살의의 파동]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[전술 지휘]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[폭주]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[오기조원]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[마나 익스트랙트]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[컨제스트]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[광폭화]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[데스 바이 리볼버(여)]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[환수 폭주]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[다크니스]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[엘레멘탈 번]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[고대의 도서관]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[셰이크 다운]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[화둔: 홍염]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[폭음폭식]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[카이]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[오버 차지]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[광적인 믿음]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[신탁의 기원]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[브레인 스톰]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[봉마연화]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[역전의 승부사]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[미라클 비전]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[로보틱스]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[미라클 비전(여)]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[오버 차지]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[윈드니스]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[블러드 번]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[일곱개의 대죄]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[오버플로우]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[오러 랜스]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[강권]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[역혈기공]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[섀도우 박서]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[독 바르기]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[강권(여)]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[코어 프렉시스]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[마창 해방]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[공명]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[워크라이]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[경계망상]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[로보틱스(여)]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[암살자의 마음가짐]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[반드시 잡는다!]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[추락하는 영혼]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[반드시 잡는다!(여)]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[성령의 메이스]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[마나 폭주]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[암흑의 의식]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[증폭]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[뒷골목 싸움법]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[귀혼일체]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[금단의 저주]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[트레이스]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[엑티베이션]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[러블리 템포]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[익사이팅]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[사냥을 시작해볼까!]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[하악질]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[큐브 오브 마테리얼리즘]", count: 1, rate: 0.0100, value: 0, icon: "🏆" },
+            { name: "플래티넘 엠블렘[squad무기강화]", count: 1, rate: 0.0100, value: 0, icon: "🏆" }
+        ];
+
+        // 두 번째 아이템 데이터베이스 (실제 던파 확률)
+        const secondItems = [
+            { name: "시브의 보조장비 보주", count: 1, rate: 0.1875, value: 40000000, icon: "💎" },
+            { name: "무기 강화권[리노] 상자", count: 1, rate: 0.2500, value: 20000000, icon: "⚔️" },
+            { name: "그랜드 마스터 계약 패키지 15일 상자", count: 1, rate: 0.4000, value: 10000000, icon: "📦" },
+            { name: "고대의 황금 증폭서", count: 1, rate: 0.0250, value: 0, icon: "📜" },
+            { name: "장비 보호권", count: 1, rate: 0.0250, value: 0, icon: "🛡️" },
+            { name: "증폭 보호권", count: 1, rate: 0.0250, value: 0, icon: "🔒" },
+            { name: "+12 증폭권 상자", count: 1, rate: 0.1200, value: 0, icon: "📦" },
+            { name: "+12 강화권 상자", count: 1, rate: 0.1928, value: 0, icon: "📦" },
+            { name: "+11 증폭권 상자", count: 1, rate: 0.2841, value: 0, icon: "📦" },
+            { name: "+11 강화권 상자", count: 1, rate: 0.7258, value: 0, icon: "📦" },
+            { name: "+10 증폭권 상자", count: 1, rate: 0.2458, value: 0, icon: "📦" },
+            { name: "+10 강화권 상자", count: 1, rate: 0.8651, value: 0, icon: "📦" },
+            { name: "+7 증폭권 상자", count: 1, rate: 1.6927, value: 0, icon: "📦" },
+            { name: "+7 강화권 상자", count: 1, rate: 3.8836, value: 0, icon: "📦" },
+            { name: "칸나의 맛있는 수제빵", count: 10, rate: 15.5336, value: 0, icon: "🍞" },
+            { name: "칸나의 맛있는 수제빵", count: 20, rate: 5.0050, value: 0, icon: "🍞" },
+            { name: "칸나의 맛있는 수제빵", count: 50, rate: 2.5026, value: 0, icon: "🍞" },
+            { name: "칸나의 맛있는 우유", count: 10, rate: 15.5335, value: 0, icon: "🥛" },
+            { name: "칸나의 맛있는 우유", count: 20, rate: 5.0050, value: 0, icon: "🥛" },
+            { name: "칸나의 맛있는 우유", count: 50, rate: 2.5026, value: 0, icon: "🥛" },
+            { name: "패왕의 계약 3일", count: 1, rate: 4.5000, value: 0, icon: "📋" },
+            { name: "달인의 계약 3일", count: 1, rate: 4.5000, value: 0, icon: "📋" },
+            { name: "성장의 계약 3일", count: 1, rate: 4.5000, value: 0, icon: "📋" },
+            { name: "큐브의 계약 7일", count: 1, rate: 4.5000, value: 0, icon: "📋" },
+            { name: "해방된 칼레이도 박스", count: 1, rate: 2.8600, value: 0, icon: "📦" },
+            { name: "해방된 칼레이도 박스", count: 10, rate: 0.2860, value: 0, icon: "📦" },
+            { name: "해방된 칼레이도 박스", count: 30, rate: 0.0930, value: 0, icon: "📦" },
+            { name: "응축된 라이언 코어", count: 10, rate: 4.0902, value: 0, icon: "💎" },
+            { name: "응축된 라이언 코어", count: 30, rate: 4.0902, value: 0, icon: "💎" },
+            { name: "응축된 라이언 코어", count: 50, rate: 4.0902, value: 0, icon: "💎" },
+            { name: "빛나는 조화의 결정체", count: 10, rate: 1.5667, value: 0, icon: "✨" },
+            { name: "빛나는 조화의 결정체", count: 30, rate: 1.5667, value: 0, icon: "✨" },
+            { name: "빛나는 조화의 결정체", count: 50, rate: 1.5667, value: 0, icon: "✨" },
+            { name: "종말의 계시 1개 상자", count: 10, rate: 1.0000, value: 0, icon: "📦" },
+            { name: "종말의 계시 1개 상자", count: 20, rate: 0.5000, value: 0, icon: "📦" },
+            { name: "상공인협의회 은화", count: 10, rate: 2.0000, value: 0, icon: "🪙" },
+            { name: "상공인협의회 은화", count: 20, rate: 2.0000, value: 0, icon: "🪙" },
+            { name: "상공인협의회 은화", count: 30, rate: 1.1856, value: 0, icon: "🪙" },
+            { name: "마스터 칼레이도 박스[계정귀속]", count: 1, rate: 0.1000, value: 0, icon: "📦" }
+        ];
+
+        // 자물쇠 선택 함수
+        function selectLock(lockType) {
+            // 모든 옵션에서 selected 클래스 제거
+            document.querySelectorAll('.lock-option').forEach(option => {
+                option.classList.remove('selected');
+                option.querySelector('.radio-button').classList.remove('selected');
+            });
+            
+            // 선택된 옵션에 selected 클래스 추가
+            const selectedOption = document.getElementById(`lockOption${lockType}`);
+            selectedOption.classList.add('selected');
+            selectedOption.querySelector('.radio-button').classList.add('selected');
+            
+            gameState.selectedLock = lockType;
+        }
+
+        // 자물쇠 해제 시도
+        function attemptUnlock() {
+            const requiredKeys = 3;
+            
+            // 레어 아이템 지연 중이면 차단
+            if (gameState.isRareItemDelay) {
+                showResult("⏳", "특별한 아이템을 감상 중입니다...", "info");
+                return;
+            }
+            
+            if (gameState.keyCount < requiredKeys) {
+                alert(`열쇠가 부족합니다!\n필요한 열쇠: ${requiredKeys}개\n보유한 열쇠: ${gameState.keyCount}개\n\n열쇠를 구매해주세요!`);
+                showResult("⚠️", "열쇠가 부족합니다!", "error");
+                return;
+            }
+
+            // 다이아몬드 자물쇠 선택 시 수량 확인
+            if (gameState.selectedLock === 2 && gameState.diamondLockCount <= 0) {
+                alert(`다이아몬드 자물쇠가 부족합니다!\n보유한 다이아몬드 자물쇠: ${gameState.diamondLockCount}개\n\n일반 자물쇠를 사용하거나 다이아몬드 자물쇠를 획득해주세요!`);
+                showResult("💎", "다이아몬드 자물쇠가 부족합니다!", "error");
+                return;
+            }
+
+            // 기존 아이템 이미지 제거 (다음 해방 시에만)
+            clearItemImages();
+
+            gameState.keyCount -= requiredKeys;
+            gameState.totalKeysUsed += requiredKeys;
+            gameState.totalLocksUsed++;
+
+            // 10번마다 다이아몬드 자물쇠 지급
+            if (gameState.totalLocksUsed % 10 === 0) {
+                gameState.diamondLockCount++;
+                showResult("💎", `봉인된 다이아몬드 자물쇠가 지급되었습니다.`, "info");
+                updateDiamondLockCount();
+            }
+
+            // 부스트 게이지 증가
+            increaseBoostGauge();
+
+            // 애니메이션 시작
+            startUnlockAnimation();
+
+            // 결과 계산 (약간의 지연 후)
+            setTimeout(() => {
+                const result = calculateUnlockResult();
+                processUnlockResult(result);
+            }, 200);
+        }
+
+        // 자물쇠 열기 애니메이션
+        function startUnlockAnimation() {
+            const chestGlow = document.getElementById('chestGlow');
+            const treasureChest = document.getElementById('treasureChest');
+            const unlockButton = document.getElementById('unlockButton');
+            
+            unlockButton.disabled = true;
+            chestGlow.style.display = 'block';
+            chestGlow.style.animation = 'chestGlow 0.5s ease-in-out';
+            treasureChest.style.animation = 'chestOpen 0.5s ease-in-out';
+        }
+
+        // 자물쇠 해제 결과 계산 (실제 던파 확률 적용)
+        function calculateUnlockResult() {
+            // 다이아몬드 자물쇠인지 확인
+            const isDiamondLock = gameState.selectedLock === 2;
+            
+            // 첫 번째 아이템 선택
+            const firstItem = selectItemByRate(firstItems, isDiamondLock);
+            // 두 번째 아이템 선택
+            const secondItem = selectItemByRate(secondItems, isDiamondLock);
+            
+            return {
+                success: true,
+                items: [firstItem, secondItem]
+            };
+        }
+
+        // 확률에 따른 아이템 선택
+        function selectItemByRate(itemList, isDiamondLock = false) {
+            // 부스트 활성화 상태이거나 다이아몬드 자물쇠일 때 상위 6개 아이템 확률 2배 적용
+            let adjustedItems = [...itemList];
+            const shouldBoost = gameState.isBoostActive || isDiamondLock;
+            
+            if (shouldBoost) {
+                adjustedItems = itemList.map((item, index) => {
+                    if (index < 6) { // 상위 6개 아이템
+                        return {
+                            ...item,
+                            rate: item.rate * 2 // 확률 2배
+                        };
+                    }
+                    return item;
+                });
+            }
+            
+            const random = Math.random() * 100; // 0-100 사이의 랜덤값
+            let cumulative = 0;
+            
+            for (const item of adjustedItems) {
+                cumulative += item.rate;
+                if (random <= cumulative) {
+                    return {
+                        name: item.name,
+                        count: item.count,
+                        value: item.value,
+                        icon: item.icon
+                    };
+                }
+            }
+            
+            // 마지막 아이템 반환 (안전장치)
+            const lastItem = adjustedItems[adjustedItems.length - 1];
+            return {
+                name: lastItem.name,
+                count: lastItem.count,
+                value: lastItem.value,
+                icon: lastItem.icon
+            };
+        }
+
+        // 자물쇠 해제 결과 처리
+        function processUnlockResult(result) {
+            if (result.success) {
+                const isDiamondLock = gameState.selectedLock === 2;
+                const resultMessage = isDiamondLock ? "다이아몬드 자물쇠가 열렸습니다!" : "자물쇠가 열렸습니다!";
+                const resultIcon = isDiamondLock ? "💎" : "🔓";
+                
+                // 다이아몬드 자물쇠 사용 시 수량 감소
+                if (isDiamondLock && gameState.diamondLockCount > 0) {
+                    gameState.diamondLockCount--;
+                    updateDiamondLockCount();
+                }
+                
+                showResult(resultIcon, resultMessage, "success");
+                showItemDrop(result.items); // 2개 아이템 배열로 변경
+                addToHistory(result);
+                
+                // 레어 아이템이 있으면 추가 지연
+                const isFirstItemRare = isRareItem(result.items[0], firstItems);
+                const isSecondItemRare = isRareItem(result.items[1], secondItems);
+                const hasRareItem = isFirstItemRare || isSecondItemRare;
+                
+                if (hasRareItem) {
+                    // 레어 아이템이면 지연 상태 설정
+                    gameState.isRareItemDelay = true;
+                    const unlockButton = document.getElementById('unlockButton');
+                    unlockButton.textContent = '특별한 아이템 감상 중...';
+                    
+                    // 1초 추가 지연
+                    setTimeout(() => {
+                        updateStats();
+                        resetAnimation();
+                        gameState.isRareItemDelay = false; // 지연 상태 해제
+                    }, 1000);
+                } else {
+                    // 일반 아이템이면 즉시 처리
+                    updateStats();
+                    resetAnimation();
+                }
+                
+                // 부스트 사용 후 게이지 리셋
+                if (gameState.isBoostActive) {
+                    gameState.boostGauge = 0;
+                    gameState.isBoostActive = false;
+                    
+                    // 부스트 애니메이션 제거
+                    const boostBar = document.getElementById('boostBar');
+                    boostBar.style.animation = '';
+                    
+                    updateBoostGauge();
+                    showResult("🚀", "부스트가 사용되었습니다! 게이지가 리셋됩니다.", "info");
+                }
+            } else {
+                showResult("🔒", "자물쇠가 열리지 않았습니다.", "failure");
+                addToHistory(result);
+                updateStats();
+                resetAnimation();
+            }
+        }
+
+        // 결과 표시
+        function showResult(icon, text, type) {
+            const resultIcon = document.getElementById('resultIcon');
+            const resultText = document.getElementById('resultText');
+            const resultDiv = document.getElementById('lockResult');
+
+            resultIcon.textContent = icon;
+            resultText.textContent = text;
+            resultDiv.className = `lock-result ${type}`;
+        }
+
+        // 아이템 드롭 표시 (중앙 보물상자 영역에) - 2개 아이템
+        function showItemDrop(items) {
+            const treasureItems = document.getElementById('treasureItems');
+            
+            // 기존 아이템 표시 제거
+            treasureItems.innerHTML = '';
+            
+            // 상위 3개 아이템인지 확인
+            const isFirstItemRare = isRareItem(items[0], firstItems);
+            const isSecondItemRare = isRareItem(items[1], secondItems);
+            const hasRareItem = isFirstItemRare || isSecondItemRare;
+            
+            // 레어 아이템이 있으면 특별 이펙트 시작
+            if (hasRareItem) {
+                startSpecialEffects();
+            }
+            
+            // 2개 아이템을 보물상자 좌우로 분리 배치
+            items.forEach((item, index) => {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'treasure-item';
+                itemElement.style.top = '60%'; // 보물상자 아래쪽
+                itemElement.style.left = index === 0 ? '15%' : '85%'; // 왼쪽/오른쪽 배치
+                
+                // 레어 아이템인지 확인하여 특별 클래스 추가
+                const isRare = (index === 0 && isFirstItemRare) || (index === 1 && isSecondItemRare);
+                if (isRare) {
+                    itemElement.classList.add('rare-item');
+                }
+                
+                itemElement.innerHTML = `
+                    <div class="treasure-item-content ${isRare ? 'rare-content' : ''}">
+                        <div class="treasure-item-icon">${item.icon}</div>
+                        <div class="treasure-item-name">${item.name} x${item.count}</div>
+                        <div class="treasure-item-value">${item.value > 0 ? item.value.toLocaleString() + '골드' : '가격 정보 없음'}</div>
+                        ${isRare ? '<div class="rare-badge">✨ 레어 ✨</div>' : ''}
+                    </div>
+                `;
+                
+                // 보물상자 영역에 아이템 표시
+                treasureItems.appendChild(itemElement);
+                
+                // 아이템 등장 애니메이션 (순차적으로)
+                setTimeout(() => {
+                    itemElement.style.opacity = '1';
+                    itemElement.style.transform = 'translateX(-50%) scale(1)';
+                    
+                    // 레어 아이템이면 추가 애니메이션
+                    if (isRare) {
+                        itemElement.style.animation = 'rareItemGlow 2s ease-in-out infinite';
+                    }
+                }, 100 + (index * 200)); // 0.2초 간격으로 순차 등장
+                
+                // 아이템 이미지 유지 (자동으로 사라지지 않음)
+                // setTimeout(() => {
+                //     itemElement.style.opacity = '0';
+                //     itemElement.style.transform = 'translateX(-50%) scale(0.8)';
+                //     setTimeout(() => {
+                //         if (itemElement.parentNode) {
+                //             itemElement.remove();
+                //         }
+                //     }, 300);
+                // }, 3000);
+            });
+        }
+        
+        // 상위 3개 아이템인지 확인하는 함수
+        function isRareItem(item, itemList) {
+            const itemIndex = itemList.findIndex(listItem => 
+                listItem.name === item.name && listItem.count === item.count
+            );
+            return itemIndex >= 0 && itemIndex < 3; // 상위 3개 아이템
+        }
+
+        // 기존 아이템 이미지 제거
+        function clearItemImages() {
+            const treasureArea = document.querySelector('.treasure-area');
+            if (treasureArea) {
+                const existingItems = treasureArea.querySelectorAll('.treasure-item');
+                existingItems.forEach(item => {
+                    if (item.parentNode) {
+                        item.remove();
+                    }
+                });
+            }
+        }
+        
+        // 특별 이펙트 시작
+        function startSpecialEffects() {
+            // 화면 전체에 특별 이펙트 추가
+            const specialEffects = document.createElement('div');
+            specialEffects.className = 'special-effects';
+            specialEffects.innerHTML = `
+                <div class="fireworks">
+                    <div class="firework firework-1">🎆</div>
+                    <div class="firework firework-2">🎆</div>
+                    <div class="firework firework-3">🎆</div>
+                    <div class="firework firework-4">🎆</div>
+                </div>
+                <div class="golden-rain">
+                    <div class="gold-coin">💰</div>
+                    <div class="gold-coin">💰</div>
+                    <div class="gold-coin">💰</div>
+                    <div class="gold-coin">💰</div>
+                    <div class="gold-coin">💰</div>
+                    <div class="gold-coin">💰</div>
+                </div>
+                <div class="sparkles">
+                    <div class="sparkle sparkle-1">✨</div>
+                    <div class="sparkle sparkle-2">✨</div>
+                    <div class="sparkle sparkle-3">✨</div>
+                    <div class="sparkle sparkle-4">✨</div>
+                    <div class="sparkle sparkle-5">✨</div>
+                    <div class="sparkle sparkle-6">✨</div>
+                </div>
+            `;
+            
+            document.body.appendChild(specialEffects);
+            
+            // 3초 후 이펙트 제거
+            setTimeout(() => {
+                if (specialEffects.parentNode) {
+                    specialEffects.remove();
+                }
+            }, 3000);
+        }
+
+        // 히스토리에 추가
+        function addToHistory(result) {
+            const historyEntry = {
+                attempt: gameState.totalLocksUsed,
+                success: result.success,
+                items: result.items || null,
+                timestamp: new Date().toLocaleTimeString()
+            };
+            
+            gameState.history.unshift(historyEntry);
+            
+            // 최대 20개까지만 유지
+            if (gameState.history.length > 20) {
+                gameState.history = gameState.history.slice(0, 20);
+            }
+            
+            // 성공한 경우 누적 아이템 업데이트
+            if (result.success && result.items) {
+                updateAccumulatedItems(result.items);
+            }
+            
+            updateHistory();
+        }
+
+        // 누적 아이템 업데이트
+        function updateAccumulatedItems(items) {
+            items.forEach(item => {
+                const key = item.name; // 이름만으로 키 생성 (개수 무관)
+                if (gameState.accumulatedItems[key]) {
+                    gameState.accumulatedItems[key].totalCount += item.count;
+                } else {
+                    gameState.accumulatedItems[key] = {
+                        name: item.name,
+                        count: item.count,
+                        totalCount: item.count,
+                        value: item.value,
+                        icon: item.icon
+                    };
+                }
+            });
+            updateAccumulatedDisplay();
+        }
+
+        // 누적 아이템 표시 업데이트
+        function updateAccumulatedDisplay() {
+            const accumulatedItems = document.getElementById('accumulatedItems');
+            const accumulatedList = document.getElementById('accumulatedList');
+            
+            const itemKeys = Object.keys(gameState.accumulatedItems);
+            
+            if (itemKeys.length === 0) {
+                accumulatedItems.style.display = 'none';
+                return;
+            }
+            
+            accumulatedItems.style.display = 'block';
+            
+            // 아이템을 이름순으로 정렬
+            const sortedItems = itemKeys
+                .map(key => gameState.accumulatedItems[key])
+                .sort((a, b) => a.name.localeCompare(b.name));
+            
+            accumulatedList.innerHTML = sortedItems.map(item => `
+                <div class="accumulated-item">
+                    <div class="accumulated-item-icon">${item.icon}</div>
+                    <div class="accumulated-item-info">
+                        <div class="accumulated-item-name">${item.name}</div>
+                        <div class="accumulated-item-count">총 ${item.totalCount}개</div>
+                        ${item.value > 0 ? `<div class="accumulated-item-value">${item.value.toLocaleString()}골드</div>` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // 히스토리 업데이트
+        function updateHistory() {
+            const historyList = document.getElementById('historyList');
+            
+            if (gameState.history.length === 0) {
+                historyList.innerHTML = '<div class="history-empty">아직 기록이 없습니다.</div>';
+                return;
+            }
+            
+            historyList.innerHTML = gameState.history.map(entry => {
+                if (entry.success && entry.items) {
+                    const itemsText = entry.items.map(item => 
+                        `${item.name} x${item.count}${item.value > 0 ? ' (' + item.value.toLocaleString() + '골드)' : ''}`
+                    ).join(', ');
+                    return `
+                        <div class="history-item success">
+                            <span class="history-attempt">#${entry.attempt}</span>
+                            <span class="history-time">${entry.timestamp}</span>
+                            <span class="history-result">성공: ${itemsText}</span>
+                        </div>
+                    `;
+                } else {
+                    return `
+                        <div class="history-item failure">
+                            <span class="history-attempt">#${entry.attempt}</span>
+                            <span class="history-time">${entry.timestamp}</span>
+                            <span class="history-result">실패</span>
+                        </div>
+                    `;
+                }
+            }).join('');
+        }
+
+        // 통계 업데이트
+        function updateStats() {
+            document.getElementById('totalKeysUsed').textContent = gameState.totalKeysUsed;
+            document.getElementById('totalLocksUsed').textContent = gameState.totalLocksUsed;
+            document.getElementById('totalSpent').textContent = gameState.totalSpent.toLocaleString();
+            document.getElementById('keyCount').textContent = gameState.keyCount;
+        }
+
+        // 다이아몬드 자물쇠 개수 업데이트
+        function updateDiamondLockCount() {
+            document.getElementById('diamondLockCount').textContent = gameState.diamondLockCount;
+            
+            // 다이아몬드 자물쇠가 0개가 되면 일반 자물쇠로 자동 전환
+            if (gameState.diamondLockCount <= 0 && gameState.selectedLock === 2) {
+                selectLock(1); // 일반 자물쇠로 전환
+                showResult("💎", "다이아몬드 자물쇠가 부족하여 일반 자물쇠로 전환됩니다.", "info");
+            }
+        }
+
+        // 부스트 게이지 업데이트
+        function updateBoostGauge() {
+            const boostBar = document.getElementById('boostBar');
+            const boostText = document.getElementById('boostText');
+            
+            boostBar.style.width = gameState.boostGauge + '%';
+            boostText.textContent = `${gameState.boostGauge}/100`;
+            
+            // 부스트 활성화 상태에 따른 색상 변경
+            if (gameState.isBoostActive) {
+                boostBar.style.background = 'linear-gradient(90deg, #ff6b6b, #ffd93d, #6bcf7f)';
+                boostText.textContent = `${gameState.boostGauge}/100 (부스트 활성!)`;
+            } else {
+                boostBar.style.background = 'linear-gradient(90deg, #4ecdc4, #44a08d)';
+            }
+        }
+
+        // 부스트 게이지 증가
+        function increaseBoostGauge() {
+            const boostAmount = Math.floor(Math.random() * 3) + 1; // 1, 2, 3 중 랜덤
+            const actualBoost = boostAmount * 5; // 5, 10, 15 중 랜덤
+            
+            gameState.boostGauge = Math.min(100, gameState.boostGauge + actualBoost);
+            
+            // 100에 도달하면 부스트 활성화 (자동 해방하지 않음)
+            if (gameState.boostGauge >= 100 && !gameState.isBoostActive) {
+                gameState.isBoostActive = true;
+                showResult("🚀", "부스트 게이지가 가득 찼습니다! 다음 해방에서 확률이 2배로 증가합니다!", "success");
+                console.log("부스트 게이지 100 도달 - 자동 해방 없음, 수동 해방 필요");
+                
+                // 부스트 활성화 시 시각적 피드백 강화
+                const boostBar = document.getElementById('boostBar');
+                boostBar.style.animation = 'pulse 1s ease-in-out infinite';
+            }
+            
+            updateBoostGauge();
+        }
+
+        // 애니메이션 리셋
+        function resetAnimation() {
+            const chestGlow = document.getElementById('chestGlow');
+            const treasureChest = document.getElementById('treasureChest');
+            const unlockButton = document.getElementById('unlockButton');
+            
+            setTimeout(() => {
+                chestGlow.style.display = 'none';
+                chestGlow.style.animation = '';
+                treasureChest.style.animation = '';
+                
+                // 레어 아이템 지연 중이 아니면 버튼 활성화
+                if (!gameState.isRareItemDelay) {
+                    unlockButton.disabled = false;
+                    unlockButton.textContent = '해방하기';
+                }
+            }, 500);
+        }
+
+        // 열쇠 구매 모달 표시
+        function showPurchaseModal() {
+            document.getElementById('purchaseModal').style.display = 'block';
+            updateModalGold();
+        }
+
+        // 열쇠 구매 모달 숨기기
+        function hidePurchaseModal() {
+            document.getElementById('purchaseModal').style.display = 'none';
+        }
+
+        // 모달 골드 정보 업데이트
+        function updateModalGold() {
+            document.getElementById('modalTotalSpent').textContent = gameState.totalSpent.toLocaleString();
+        }
+
+        // 열쇠 구매
+        function purchaseKeys(amount) {
+            const cost = amount * keyPrice;
+            gameState.keyCount += amount;
+            gameState.totalSpent += cost;
+            
+            updateStats();
+            updateModalGold();
+            hidePurchaseModal();
+            
+            showResult("🔑", `${amount}개의 열쇠를 구매했습니다!`, "success");
+        }
+
+        // 게임 리셋
+        function resetGame() {
+            if (confirm('게임을 리셋하시겠습니까?')) {
+                gameState = {
+                    keyCount: 0,
+                    totalKeysUsed: 0,
+                    totalLocksUsed: 0,
+                    totalSpent: 0,
+                    diamondLockCount: 0,
+                    selectedLock: 1,
+                    history: [],
+                    accumulatedItems: {},
+                    isRareItemDelay: false,
+                    boostGauge: 0,
+                    isBoostActive: false
+                };
+
+                document.getElementById('lockResult').className = 'lock-result';
+                
+                updateStats();
+                updateDiamondLockCount();
+                updateBoostGauge();
+                updateHistory();
+                updateAccumulatedDisplay();
+            }
+        }
+
+        // 페이지 로드 시 초기화
+        document.addEventListener('DOMContentLoaded', function() {
+            updateStats();
+            updateDiamondLockCount();
+            updateBoostGauge();
+            updateHistory();
+        });
+    </script>
+</body>
+</html>

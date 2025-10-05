@@ -62,23 +62,45 @@
                     <div th:each="user : ${allUsers}" class="user-card">
                         <div class="user-info">
                             <h3 th:text="${user.username}"></h3>
-                            <p th:text="${user.email}"></p>
-                            <p th:text="'이름: ' + ${user.name}"></p>
-                            <p th:text="'전화번호: ' + ${user.phone}"></p>
-                            <p class="status" th:classappend="${user.status.name().toLowerCase()}" th:text="${user.status.name()}"></p>
-                            <p th:if="${user.isAdmin}" class="admin-badge">관리자</p>
+                            <div class="user-details">
+                                <div class="detail-item">
+                                    <span class="detail-label">📧 이메일</span>
+                                    <span class="detail-value" th:text="${user.email}"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">👤 이름</span>
+                                    <span class="detail-value" th:text="${user.name}"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">📱 전화번호</span>
+                                    <span class="detail-value" th:text="${user.phone}"></span>
+                                </div>
+                                <div class="detail-item">
+                                    <span class="detail-label">📊 상태</span>
+                                    <span class="status" th:classappend="${user.status.name().toLowerCase()}" th:text="${user.status.name()}"></span>
+                                </div>
+                                <div class="detail-item" th:if="${user.isAdmin}">
+                                    <span class="admin-badge">관리자</span>
+                                </div>
+                            </div>
                         </div>
                         <div class="user-actions" th:if="${user.status.name() == 'APPROVED'}">
-                            <form th:action="@{/admin/reset-password}" method="post" style="display: inline;">
+                            <form th:action="@{/admin/reset-password}" method="post">
                                 <input type="hidden" name="userId" th:value="${user.id}">
-                                <input type="password" name="newPassword" placeholder="새 비밀번호" required style="margin-right: 10px;">
-                                <button type="submit" class="btn btn-warning">비밀번호 재설정</button>
+                                <div class="form-group">
+                                    <input type="password" name="newPassword" placeholder="새 비밀번호" required>
+                                </div>
+                                <div class="button-group">
+                                    <button type="submit" class="btn btn-warning">비밀번호 재설정</button>
+                                </div>
                             </form>
-                            <form th:action="@{/admin/delete-user}" method="post" style="display: inline; margin-left: 10px;" 
+                            <form th:action="@{/admin/delete-user}" method="post" 
                                   th:if="${!user.isAdmin}" 
                                   onsubmit="return confirm('정말로 이 사용자를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')">
                                 <input type="hidden" name="userId" th:value="${user.id}">
-                                <button type="submit" class="btn btn-danger">사용자 삭제</button>
+                                <div class="button-group">
+                                    <button type="submit" class="btn btn-danger">사용자 삭제</button>
+                                </div>
                             </form>
                         </div>
                     </div>

@@ -14,6 +14,7 @@
                 <li><a href="/" class="nav-link">홈</a></li>
                 <li><a href="/hello" class="nav-link">실시간 채팅</a></li>
                 <li><a href="/about" class="nav-link">소개</a></li>
+                <li><a href="/locked-lock" class="nav-link">봉인된 자물쇠</a></li>
                 <li th:if="${user != null}" class="user-info">
                     <span class="user-name" th:text="${user.username}"></span>
                     <a th:if="${user.isAdmin}" href="/admin" class="nav-link admin-link">관리자</a>
@@ -36,16 +37,60 @@
             
             <div class="feature-grid">
                 <div class="feature-card">
-                    <h3>기능 1</h3>
-                    <p>여기에 첫 번째 기능을 추가해보세요</p>
+                    <h3>💬 실시간 채팅</h3>
+                    <p>WebSocket 기반 실시간 채팅 기능입니다. 로그인한 사용자들과 실시간으로 메시지를 주고받을 수 있습니다.</p>
+                    <a href="/hello" class="feature-link">채팅방 입장하기</a>
                 </div>
                 <div class="feature-card">
-                    <h3>기능 2</h3>
-                    <p>여기에 두 번째 기능을 추가해보세요</p>
+                    <h3>👥 사용자 관리</h3>
+                    <p>회원가입, 로그인, 관리자 승인 시스템을 통해 안전한 사용자 관리를 제공합니다.</p>
+                    <a href="/register" class="feature-link">회원가입하기</a>
                 </div>
                 <div class="feature-card">
-                    <h3>기능 3</h3>
-                    <p>여기에 세 번째 기능을 추가해보세요</p>
+                    <h3>🔐 관리자 기능</h3>
+                    <p>사용자 승인, 비밀번호 재설정, 사용자 삭제 등 관리자 전용 기능을 제공합니다.</p>
+                    <a href="/admin" class="feature-link" th:if="${user != null && user.isAdmin}">관리자 페이지</a>
+                    <span th:unless="${user != null && user.isAdmin}" class="feature-disabled">관리자 권한 필요</span>
+                </div>
+                <div class="feature-card">
+                    <h3>💎 던파 봉자 까기</h3>
+                    <p>던전앤파이터의 봉인된 자물쇠를 시뮬레이션하는 게임입니다. 실제 던파 확률을 적용하여 다양한 아이템을 획득할 수 있습니다.</p>
+                    <div class="feature-details">
+                        <h4>🎮 주요 기능:</h4>
+                        <ul>
+                            <li>봉인된 자물쇠 & 다이아몬드 자물쇠</li>
+                            <li>실제 던파 확률 적용</li>
+                            <li>부스트 게이지 시스템</li>
+                            <li>레어 아이템 특별 이펙트</li>
+                            <li>아이템 누적 관리</li>
+                        </ul>
+                    </div>
+                    <a href="/locked-lock" class="feature-link">봉자 까기 시작하기</a>
+                </div>
+                <div class="feature-card">
+                    <h3>⚡ 기능 추가 예정</h3>
+                    <p>미정</p>
+                    <span class="feature-info">미정</span>
+                </div>
+                <div class="feature-card">
+                    <h3>🔒 보안 시스템</h3>
+                    <p>Spring Security 기반 인증/인가, CSRF 보호, 비밀번호 암호화 등 강력한 보안 기능을 제공합니다.</p>
+                    <span class="feature-info">자동 적용됨</span>
+                </div>
+                <div class="feature-card">
+                    <h3>⚡ 기능 추가 예정</h3>
+                    <p>미정</p>
+                    <span class="feature-info">미정</span>
+                </div>
+                <div class="feature-card">
+                    <h3>⚡ 기능 추가 예정</h3>
+                    <p>미정</p>
+                    <span class="feature-info">미정</span>
+                </div>
+                <div class="feature-card">
+                    <h3>⚡ 기능 추가 예정</h3>
+                    <p>미정</p>
+                    <span class="feature-info">미정</span>
                 </div>
             </div>
         </div>

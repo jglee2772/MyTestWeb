@@ -16,6 +16,7 @@
                 <li><a href="/" class="nav-link">홈</a></li>
                 <li><a href="/hello" class="nav-link active">실시간 채팅</a></li>
                 <li><a href="/about" class="nav-link">소개</a></li>
+                <li><a href="/locked-lock" class="nav-link">봉인된 자물쇠</a></li>
                 <li th:if="${user != null}" class="user-info">
                     <span class="user-name" th:text="${user.username}"></span>
                     <a th:if="${user.isAdmin}" href="/admin" class="nav-link admin-link">관리자</a>
