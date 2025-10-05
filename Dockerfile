@@ -4,22 +4,11 @@ FROM gradle:8.5-jdk17 AS build
 # 작업 디렉토리 설정
 WORKDIR /app
 
-# Gradle 파일들 복사
-COPY build.gradle settings.gradle ./
-COPY gradle/ gradle/
-COPY gradlew ./
+# 모든 파일 복사
+COPY . .
 
 # Gradle Wrapper 실행 권한 부여
 RUN chmod +x ./gradlew
-
-# Gradle Wrapper JAR 파일 다운로드
-RUN curl -o gradle/wrapper/gradle-wrapper.jar https://github.com/gradle/gradle/raw/v8.5.0/gradle/wrapper/gradle-wrapper.jar
-
-# 의존성 다운로드 (캐시 최적화)
-RUN ./gradlew dependencies --no-daemon
-
-# 소스 코드 복사
-COPY src/ src/
 
 # 애플리케이션 빌드
 RUN ./gradlew build --no-daemon -x test
