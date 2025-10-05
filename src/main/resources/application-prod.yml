@@ -21,6 +21,13 @@ spring:
       hibernate:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: false
+    defer-datasource-initialization: true
+  
+  # 초기 데이터 로드
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:data-prod.sql
   
   # H2 콘솔 비활성화 (프로덕션)
   h2:

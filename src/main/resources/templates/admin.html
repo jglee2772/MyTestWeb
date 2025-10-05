@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>관리자 페이지 - MyTestWeb</title>
+    <link th:href="@{/css/style.css}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-title">MyTestWeb - 관리자</h1>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">홈</a></li>
+                <li><a href="/admin" class="nav-link active">관리자</a></li>
+                <li>
+                    <form th:action="@{/logout}" method="post" style="display: inline;">
+                        <button type="submit" class="nav-link logout-link">로그아웃</button>
+                    </form>
+                </li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <h1>관리자 페이지</h1>
+            
+            <!-- 승인 대기 사용자 -->
+            <div class="admin-section">
+                <h2>승인 대기 사용자</h2>
+                <div th:if="${#lists.isEmpty(pendingUsers)}" class="no-data">
+                    승인 대기 중인 사용자가 없습니다.
+                </div>
+                <div th:unless="${#lists.isEmpty(pendingUsers)}" class="user-list">
+                    <div th:each="user : ${pendingUsers}" class="user-card">
+                        <div class="user-info">
+                            <h3 th:text="${user.username}"></h3>
+                            <p th:text="${user.email}"></p>
+                            <p th:text="'이름: ' + ${user.name}"></p>
+                            <p th:text="'전화번호: ' + ${user.phone}"></p>
+                            <p class="status pending">승인 대기</p>
+                        </div>
+                        <div class="user-actions">
+                            <form th:action="@{/admin/approve}" method="post" style="display: inline;">
+                                <input type="hidden" name="userId" th:value="${user.id}">
+                                <button type="submit" class="btn btn-success">승인</button>
+                            </form>
+                            <form th:action="@{/admin/reject}" method="post" style="display: inline;">
+                                <input type="hidden" name="userId" th:value="${user.id}">
+                                <button type="submit" class="btn btn-danger">거부</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 모든 사용자 목록 -->
+            <div class="admin-section">
+                <h2>전체 사용자 목록</h2>
+                <div class="user-list">
+                    <div th:each="user : ${allUsers}" class="user-card">
+                        <div class="user-info">
+                            <h3 th:text="${user.username}"></h3>
+                            <p th:text="${user.email}"></p>
+                            <p th:text="'이름: ' + ${user.name}"></p>
+                            <p th:text="'전화번호: ' + ${user.phone}"></p>
+                            <p class="status" th:classappend="${user.status.name().toLowerCase()}" th:text="${user.status.name()}"></p>
+                            <p th:if="${user.isAdmin}" class="admin-badge">관리자</p>
+                        </div>
+                        <div class="user-actions" th:if="${user.status.name() == 'APPROVED'}">
+                            <form th:action="@{/admin/reset-password}" method="post" style="display: inline;">
+                                <input type="hidden" name="userId" th:value="${user.id}">
+                                <input type="password" name="newPassword" placeholder="새 비밀번호" required style="margin-right: 10px;">
+                                <button type="submit" class="btn btn-warning">비밀번호 재설정</button>
+                            </form>
+                            <form th:action="@{/admin/delete-user}" method="post" style="display: inline; margin-left: 10px;" 
+                                  th:if="${!user.isAdmin}" 
+                                  onsubmit="return confirm('정말로 이 사용자를 삭제하시겠습니까? 이 작업은 되돌릴 수 없습니다.')">
+                                <input type="hidden" name="userId" th:value="${user.id}">
+                                <button type="submit" class="btn btn-danger">사용자 삭제</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 채팅 관리 섹션 -->
+            <div class="admin-section">
+                <h2>채팅 관리</h2>
+                <div class="chat-management">
+                    <div class="chat-actions">
+                        <form th:action="@{/admin/cleanup-chat}" method="post" style="display: inline; margin-right: 10px;">
+                            <label for="cleanupDays">정리할 일수:</label>
+                            <select name="days" id="cleanupDays" style="margin: 0 10px;">
+                                <option value="3">3일 이전</option>
+                                <option value="7" selected>7일 이전</option>
+                                <option value="14">14일 이전</option>
+                                <option value="30">30일 이전</option>
+                            </select>
+                            <button type="submit" class="btn btn-warning">채팅 메시지 정리</button>
+                        </form>
+                        
+                        <form th:action="@{/admin/chat-statistics}" method="post" style="display: inline;">
+                            <button type="submit" class="btn btn-secondary">채팅 통계 조회</button>
+                        </form>
+                    </div>
+                    <div class="chat-info">
+                        <p><strong>자동 정리:</strong> 매일 새벽 2시에 7일 이전 메시지가 자동으로 삭제됩니다.</p>
+                        <p><strong>수동 정리:</strong> 위 버튼을 클릭하여 원하는 기간 이전 메시지를 즉시 삭제할 수 있습니다.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</body>
+</html>

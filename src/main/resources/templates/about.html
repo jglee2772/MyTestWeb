@@ -12,8 +12,19 @@
             <h1 class="nav-title">MyTestWeb</h1>
             <ul class="nav-menu">
                 <li><a href="/" class="nav-link">홈</a></li>
-                <li><a href="/hello" class="nav-link">인사</a></li>
+                <li><a href="/hello" class="nav-link">실시간 채팅</a></li>
                 <li><a href="/about" class="nav-link active">소개</a></li>
+                <li th:if="${user != null}" class="user-info">
+                    <span class="user-name" th:text="${user.username}"></span>
+                    <a th:if="${user.isAdmin}" href="/admin" class="nav-link admin-link">관리자</a>
+                    <form th:action="@{/logout}" method="post" style="display: inline;">
+                        <button type="submit" class="nav-link logout-link">로그아웃</button>
+                    </form>
+                </li>
+                <li th:unless="${user != null}">
+                    <a href="/login" class="nav-link">로그인</a>
+                    <a href="/register" class="nav-link">회원가입</a>
+                </li>
             </ul>
         </div>
     </nav>
@@ -21,22 +32,21 @@
     <main class="main-content">
         <div class="container">
             <h1>MyTestWeb 소개</h1>
-            <p>이 프로젝트는 스프링부트를 사용한 웹 개발 테스트 프로젝트입니다.</p>
+            <p>이 웹사이트는 스프링 부트를 이용한 이것저것 해보는 사이트다.</p>
             
-            <h2>사용 기술</h2>
+            <h2>사용중인 테스트 기능</h2>
             <ul>
-                <li>Spring Boot 3.2.0</li>
-                <li>Thymeleaf (템플릿 엔진)</li>
-                <li>Spring Data JPA</li>
-                <li>H2 Database</li>
-                <li>Gradle</li>
+                <li></li>
+                <li></li>
+                <li></li>
+                <li></li>
+                <li></li>
             </ul>
             
-            <h2>개발 환경</h2>
+            <h2>개발 및 관리자</h2>
             <ul>
-                <li>Java 17</li>
-                <li>IntelliJ IDEA</li>
-                <li>Cursor</li>
+                <li>개발자 이정건</li>
+                <li>관리자 없음</li>
             </ul>
         </div>
     </main>

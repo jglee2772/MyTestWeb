@@ -3,27 +3,367 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>인사 - MyTestWeb</title>
-    <link th:href="@{/css/style.css}" rel="stylesheet">
+    <title>실시간 채팅 - MyTestWeb</title>
+    <link rel="stylesheet" th:href="@{/css/style.css}">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/sockjs-client/1.6.1/sockjs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/stomp.js/2.3.3/stomp.min.js"></script>
 </head>
 <body>
     <nav class="navbar">
         <div class="nav-container">
-            <h1 class="nav-title">MyTestWeb</h1>
+            <h1 class="nav-title">MyTestWeb - 실시간 채팅</h1>
             <ul class="nav-menu">
                 <li><a href="/" class="nav-link">홈</a></li>
-                <li><a href="/hello" class="nav-link active">인사</a></li>
+                <li><a href="/hello" class="nav-link active">실시간 채팅</a></li>
                 <li><a href="/about" class="nav-link">소개</a></li>
+                <li th:if="${user != null}" class="user-info">
+                    <span class="user-name" th:text="${user.username}"></span>
+                    <a th:if="${user.isAdmin}" href="/admin" class="nav-link admin-link">관리자</a>
+                    <form th:action="@{/logout}" method="post" style="display: inline;">
+                        <button type="submit" class="nav-link logout-link">로그아웃</button>
+                    </form>
+                </li>
+                <li th:unless="${user != null}">
+                    <a href="/login" class="nav-link">로그인</a>
+                    <a href="/register" class="nav-link">회원가입</a>
+                </li>
             </ul>
         </div>
     </nav>
 
     <main class="main-content">
         <div class="container">
-            <h1>안녕하세요, <span th:text="${name}"></span>님!</h1>
-            <p>URL에 ?name=당신의이름 을 추가해보세요!</p>
-            <a href="/" class="btn">홈으로 돌아가기</a>
+            <div class="chat-container">
+                <div class="chat-header">
+                    <h2>실시간 채팅방</h2>
+                    <div class="online-users">
+                        <span id="online-count">0</span>명 접속 중
+                    </div>
+                </div>
+                
+                <div class="chat-messages" id="chatMessages">
+                    <!-- 기존 메시지들 -->
+                    <div th:each="message : ${recentMessages}" class="message" th:classappend="${message.messageType.name().toLowerCase()}">
+                        <div class="message-content">
+                            <span class="message-username" th:text="${message.username}"></span>
+                            <span class="message-text" th:text="${message.message}"></span>
+                            <span class="message-time" th:text="${#temporals.format(message.createdAt, 'HH:mm')}"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="chat-input-container">
+                    <div class="user-input-section" id="userInputSection">
+                        <div class="welcome-message" th:if="${currentUsername != null}">
+                            <span th:text="'안녕하세요, ' + ${currentUsername} + '님! 채팅방에 입장하세요.'"></span>
+                        </div>
+                        <div class="welcome-message" th:if="${currentUsername == null}">
+                            <span>실시간 채팅방에 입장하세요!</span>
+                            <br><small class="text-muted">게스트 사용자명으로 채팅됩니다.</small>
+                        </div>
+                        <button id="joinButton" class="btn btn-primary">채팅방 입장</button>
+                    </div>
+                    
+                    <div class="message-input-section" id="messageInputSection" style="display: none;">
+                        <div class="input-group">
+                            <input type="text" id="messageInput" placeholder="메시지를 입력하세요..." maxlength="500">
+                            <button id="sendButton" class="btn btn-primary">전송</button>
+                        </div>
+                        <div class="typing-indicator" id="typingIndicator" style="display: none;">
+                            <span id="typingUsers"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
         </div>
     </main>
+
+    <script>
+        let stompClient = null;
+        let username = null;
+        let typingTimer = null;
+        let onlineUsers = new Set();
+        let heartbeatInterval = null;
+        
+        // 서버에서 전달된 사용자명 확인
+        const currentUsername = /*[[${currentUsername}]]*/ null;
+        
+        // 디버깅: 페이지 로드 시 사용자명 확인
+        console.log('=== 페이지 로드 시 사용자명 확인 ===');
+        console.log('currentUsername:', currentUsername);
+        console.log('currentUsername 타입:', typeof currentUsername);
+        console.log('currentUsername === null:', currentUsername === null);
+        console.log('currentUsername === "null":', currentUsername === "null");
+        
+        // 추가 디버깅: 사용자 정보 확인
+        const userElement = document.querySelector('.user-name');
+        if (userElement) {
+            console.log('네비게이션에서 사용자명 발견:', userElement.textContent);
+        } else {
+            console.log('네비게이션에서 사용자명을 찾을 수 없음');
+        }
+
+        // 채팅방 입장 버튼 (통합)
+        const joinButton = document.getElementById('joinButton');
+        if (joinButton) {
+            joinButton.addEventListener('click', function() {
+                console.log('=== 채팅방 입장 버튼 클릭됨 ===');
+                console.log('currentUsername 값:', currentUsername);
+                console.log('currentUsername 타입:', typeof currentUsername);
+                
+                // 사용자명 설정
+                let finalUsername = null;
+                
+                if (currentUsername && currentUsername !== 'null' && currentUsername.trim() !== '') {
+                    // 서버에서 전달된 사용자명 사용
+                    finalUsername = currentUsername;
+                    console.log('✅ 서버에서 전달된 사용자명 사용:', finalUsername);
+                } else {
+                    // 네비게이션에서 사용자명 확인
+                    const userElement = document.querySelector('.user-name');
+                    if (userElement && userElement.textContent.trim() !== '') {
+                        finalUsername = userElement.textContent.trim();
+                        console.log('✅ 네비게이션에서 사용자명 발견:', finalUsername);
+                    }
+                }
+                
+                if (finalUsername) {
+                    // 로그인한 사용자 - 실제 아이디 사용
+                    username = finalUsername;
+                    console.log('✅ 로그인 사용자 입장:', username);
+                } else {
+                    // 비로그인 사용자 - 게스트 사용자명 사용
+                    username = 'Guest_' + Math.random().toString(36).substr(2, 9);
+                    console.log('👤 게스트 사용자 입장:', username);
+                }
+                
+                console.log('최종 설정된 username:', username);
+                
+                // WebSocket 연결
+                connect();
+                
+                // UI 전환
+                document.getElementById('userInputSection').style.display = 'none';
+                document.getElementById('messageInputSection').style.display = 'block';
+            });
+        }
+
+        // WebSocket 연결
+        function connect() {
+            console.log('=== WebSocket 연결 시작 ===');
+            console.log('사용자명:', username);
+            console.log('현재 로그인 사용자:', currentUsername);
+            console.log('사용자명 타입:', currentUsername ? '로그인 사용자' : '게스트 사용자');
+            
+            const socket = new SockJS('/ws');
+            stompClient = Stomp.over(socket);
+            
+            // 디버그 모드 활성화
+            stompClient.debug = function(str) {
+                console.log('STOMP Debug:', str);
+            };
+            
+        stompClient.connect({}, function(frame) {
+            console.log('✅ WebSocket 연결 성공!');
+            console.log('Frame:', frame);
+            
+            // 접속자 수 초기화
+            onlineUsers.clear();
+            onlineUsers.add(username);
+            updateOnlineCount();
+            console.log('초기 접속자 수 설정:', onlineUsers.size);
+            
+            // 사용자 입장 메시지 전송
+            const joinMessage = {
+                username: username,
+                messageType: 'JOIN'
+            };
+            console.log('입장 메시지 전송:', joinMessage);
+            stompClient.send("/app/chat.addUser", {}, JSON.stringify(joinMessage));
+            
+            // 메시지 구독
+            stompClient.subscribe('/topic/public', function(message) {
+                console.log('📨 메시지 수신:', message.body);
+                const chatMessage = JSON.parse(message.body);
+                displayMessage(chatMessage);
+                
+                // 접속자 수 업데이트
+                if (chatMessage.messageType === 'JOIN') {
+                    onlineUsers.add(chatMessage.username);
+                    console.log('👤 사용자 입장:', chatMessage.username);
+                } else if (chatMessage.messageType === 'LEAVE') {
+                    onlineUsers.delete(chatMessage.username);
+                    console.log('👋 사용자 퇴장:', chatMessage.username);
+                }
+                updateOnlineCount();
+            });
+            
+            console.log('=== WebSocket 설정 완료 ===');
+        }, function(error) {
+            console.error('❌ WebSocket 연결 실패:', error);
+            // 에러 메시지를 더 친화적으로 변경
+            console.log('WebSocket 연결이 끊어졌습니다. 이는 정상적인 상황일 수 있습니다.');
+        });
+        }
+
+        // 메시지 전송 (sendButton이 존재하는 경우에만)
+        const sendButton = document.getElementById('sendButton');
+        if (sendButton) {
+            sendButton.addEventListener('click', function() {
+                sendMessage();
+            });
+        }
+
+        // Enter 키로 메시지 전송 (messageInput이 존재하는 경우에만)
+        const messageInput = document.getElementById('messageInput');
+        if (messageInput) {
+            messageInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    sendMessage();
+                }
+            });
+        }
+
+        // 타이핑 상태 전송 (messageInput이 존재하는 경우에만)
+        if (messageInput) {
+            messageInput.addEventListener('input', function() {
+                if (stompClient) {
+                    // 타이핑 상태를 서버로 전송 (간단한 구현)
+                    clearTimeout(typingTimer);
+                    typingTimer = setTimeout(() => {
+                        // 타이핑 종료
+                    }, 1000);
+                }
+            });
+        }
+
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            if (!messageInput) return;
+            
+            const message = messageInput.value.trim();
+            
+            if (message && stompClient) {
+                const chatMessage = {
+                    username: username,
+                    message: message,
+                    messageType: 'CHAT'
+                };
+                
+                stompClient.send("/app/chat.sendMessage", {}, JSON.stringify(chatMessage));
+                messageInput.value = '';
+            }
+        }
+
+        function displayMessage(message) {
+            const messagesContainer = document.getElementById('chatMessages');
+            const messageElement = document.createElement('div');
+            messageElement.classList.add('message', message.messageType.toLowerCase());
+            
+            // 서버에서 받은 시간 사용 (더 정확함)
+            const messageTime = message.createdAt ? 
+                new Date(message.createdAt).toLocaleTimeString('ko-KR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                }) : 
+                new Date().toLocaleTimeString('ko-KR', { 
+                    hour: '2-digit', 
+                    minute: '2-digit' 
+                });
+            
+            messageElement.innerHTML = `
+                <div class="message-content">
+                    <span class="message-username">${message.username}</span>
+                    <span class="message-text">${message.message}</span>
+                    <span class="message-time">${messageTime}</span>
+                </div>
+            `;
+            
+            messagesContainer.appendChild(messageElement);
+            
+            // 스크롤을 맨 아래로 이동 (새 메시지가 보이도록)
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            
+            console.log('새 메시지 표시:', message.username, message.message);
+        }
+        
+        // 접속자 수 업데이트
+        function updateOnlineCount() {
+            console.log('=== 접속자 수 업데이트 ===');
+            console.log('현재 접속자 목록:', Array.from(onlineUsers));
+            console.log('접속자 수:', onlineUsers.size);
+            
+            const onlineCountElement = document.getElementById('online-count');
+            if (onlineCountElement) {
+                onlineCountElement.textContent = onlineUsers.size;
+                console.log('✅ 접속자 수 UI 업데이트 완료:', onlineUsers.size);
+            } else {
+                console.error('❌ online-count 요소를 찾을 수 없습니다.');
+                console.log('페이지에서 online-count ID를 가진 요소를 찾을 수 없습니다.');
+            }
+        }
+        
+        // WebSocket 연결 상태 확인 및 정리 함수
+        function cleanupWebSocket() {
+            if (stompClient && username) {
+                console.log('WebSocket 정리 시작:', username);
+                
+                // Heartbeat 정리
+                if (heartbeatInterval) {
+                    clearInterval(heartbeatInterval);
+                    heartbeatInterval = null;
+                }
+                
+                // 퇴장 메시지 전송 (에러 무시)
+                try {
+                    if (stompClient.connected) {
+                        stompClient.send("/app/chat.addUser", {}, JSON.stringify({
+                            username: username,
+                            messageType: 'LEAVE'
+                        }));
+                        console.log('퇴장 메시지 전송 성공');
+                    }
+                } catch (e) {
+                    console.log('퇴장 메시지 전송 실패 (정상):', e.message);
+                }
+                
+                // WebSocket 연결 종료
+                try {
+                    if (stompClient.connected) {
+                        stompClient.disconnect();
+                        console.log('WebSocket 연결 종료');
+                    }
+                } catch (e) {
+                    console.log('WebSocket 연결 종료 실패 (정상):', e.message);
+                }
+                
+                stompClient = null;
+                username = null;
+            }
+        }
+
+        // 페이지 종료 시 퇴장 메시지 전송 (현대적인 방법)
+        window.addEventListener('pagehide', function() {
+            cleanupWebSocket();
+        });
+        
+        // 추가적인 퇴장 처리 (visibilitychange 이벤트)
+        document.addEventListener('visibilitychange', function() {
+            if (document.hidden) {
+                cleanupWebSocket();
+            }
+        });
+
+        // beforeunload 이벤트도 추가 (더 안전한 정리)
+        window.addEventListener('beforeunload', function() {
+            cleanupWebSocket();
+        });
+
+        // 페이지 로드 시 스크롤을 맨 아래로
+        window.addEventListener('load', function() {
+            const messagesContainer = document.getElementById('chatMessages');
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        });
+    </script>
 </body>
 </html>

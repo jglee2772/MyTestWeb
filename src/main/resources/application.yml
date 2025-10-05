@@ -20,12 +20,24 @@ spring:
     properties:
       hibernate:
         format_sql: true
+        hbm2ddl:
+          auto: create-drop
+    defer-datasource-initialization: true
+    database-platform: org.hibernate.dialect.H2Dialect
+  
+  # 초기 데이터 로드
+  sql:
+    init:
+      mode: always
+      data-locations: classpath:data.sql
   
   # H2 콘솔 활성화 (개발용)
   h2:
     console:
       enabled: true
       path: /h2-console
+      settings:
+        web-allow-others: true
 
 # 로깅 설정
 logging:
