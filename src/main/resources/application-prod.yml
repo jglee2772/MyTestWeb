@@ -8,7 +8,7 @@ spring:
   
   # PostgreSQL 데이터베이스 설정 (렌더 환경)
   datasource:
-    url: jdbc:postgresql://dpg-d3h2637fte5s73cids5g-a.oregon-postgres.render.com:5432/${DATABASE_URL}
+    url: jdbc:postgresql://dpg-d3h2637fte5s73cids5g-a.oregon-postgres.render.com:5432/mytestweb_db
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
