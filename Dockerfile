@@ -9,6 +9,9 @@ COPY build.gradle settings.gradle ./
 COPY gradle/ gradle/
 COPY gradlew ./
 
+# Gradle Wrapper 실행 권한 부여
+RUN chmod +x ./gradlew
+
 # 의존성 다운로드 (캐시 최적화)
 RUN ./gradlew dependencies --no-daemon
 
