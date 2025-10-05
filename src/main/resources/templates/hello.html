@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>인사 - MyTestWeb</title>
+    <link th:href="@{/css/style.css}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-title">MyTestWeb</h1>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">홈</a></li>
+                <li><a href="/hello" class="nav-link active">인사</a></li>
+                <li><a href="/about" class="nav-link">소개</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <h1>안녕하세요, <span th:text="${name}"></span>님!</h1>
+            <p>URL에 ?name=당신의이름 을 추가해보세요!</p>
+            <a href="/" class="btn">홈으로 돌아가기</a>
+        </div>
+    </main>
+</body>
+</html>

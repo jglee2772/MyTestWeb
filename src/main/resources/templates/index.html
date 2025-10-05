@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MyTestWeb - 홈</title>
+    <link th:href="@{/css/style.css}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-title">MyTestWeb</h1>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">홈</a></li>
+                <li><a href="/hello" class="nav-link">인사</a></li>
+                <li><a href="/about" class="nav-link">소개</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <h1 th:text="${message}" class="welcome-title"></h1>
+            <p class="welcome-text">이곳에서 다양한 웹 개발 기능들을 테스트해보세요!</p>
+            
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <h3>기능 1</h3>
+                    <p>여기에 첫 번째 기능을 추가해보세요</p>
+                </div>
+                <div class="feature-card">
+                    <h3>기능 2</h3>
+                    <p>여기에 두 번째 기능을 추가해보세요</p>
+                </div>
+                <div class="feature-card">
+                    <h3>기능 3</h3>
+                    <p>여기에 세 번째 기능을 추가해보세요</p>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer">
+        <p>&copy; 2024 MyTestWeb. 모든 권리 보유.</p>
+    </footer>
+</body>
+</html>

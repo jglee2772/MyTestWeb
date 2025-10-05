@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="ko" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>소개 - MyTestWeb</title>
+    <link th:href="@{/css/style.css}" rel="stylesheet">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-container">
+            <h1 class="nav-title">MyTestWeb</h1>
+            <ul class="nav-menu">
+                <li><a href="/" class="nav-link">홈</a></li>
+                <li><a href="/hello" class="nav-link">인사</a></li>
+                <li><a href="/about" class="nav-link active">소개</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <main class="main-content">
+        <div class="container">
+            <h1>MyTestWeb 소개</h1>
+            <p>이 프로젝트는 스프링부트를 사용한 웹 개발 테스트 프로젝트입니다.</p>
+            
+            <h2>사용 기술</h2>
+            <ul>
+                <li>Spring Boot 3.2.0</li>
+                <li>Thymeleaf (템플릿 엔진)</li>
+                <li>Spring Data JPA</li>
+                <li>H2 Database</li>
+                <li>Gradle</li>
+            </ul>
+            
+            <h2>개발 환경</h2>
+            <ul>
+                <li>Java 17</li>
+                <li>IntelliJ IDEA</li>
+                <li>Cursor</li>
+            </ul>
+        </div>
+    </main>
+</body>
+</html>
