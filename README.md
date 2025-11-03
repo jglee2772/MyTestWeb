@@ -56,6 +56,24 @@ gradlew.bat bootRun
 - 메인 페이지: http://localhost:8080
 - H2 콘솔: http://localhost:8080/h2-console
 
+## 기본 계정 정보
+
+프로젝트 실행 시 자동으로 생성되는 초기 계정입니다:
+
+### 관리자 계정
+- **아이디**: `admin`
+- **비밀번호**: `password`
+- **이메일**: `admin@mytestweb.com`
+- **권한**: 관리자 (사용자 승인, 비밀번호 재설정, 사용자 삭제 등)
+
+### 데모 사용자 계정
+- **아이디**: `demo_user`
+- **비밀번호**: `password`
+- **이메일**: `demo@mytestweb.com`
+- **권한**: 일반 사용자
+
+> **참고**: 초기 계정 정보는 `src/main/resources/data.sql` 파일에 정의되어 있습니다.
+
 ## 주요 기능
 
 - 홈페이지 (/) - 메인 페이지
