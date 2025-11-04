@@ -12,6 +12,13 @@ spring:
     driver-class-name: org.postgresql.Driver
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
+    hikari:
+      maximum-pool-size: 5  # 커넥션 풀 크기 제한
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000  # 30분 (Render PostgreSQL의 연결 타임아웃에 맞춤)
+      leak-detection-threshold: 60000
   
   # JPA 설정
   jpa:

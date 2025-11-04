@@ -12,10 +12,6 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
-import javax.sql.DataSource;
-import java.sql.Connection;
-import java.sql.DatabaseMetaData;
-import java.sql.ResultSet;
 import java.util.Optional;
 
 @Component
@@ -29,9 +25,6 @@ public class DataInitializer implements CommandLineRunner {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
-
-    @Autowired
-    private DataSource dataSource;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -108,27 +101,21 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private void ensureTablesExist() {
-        try (Connection connection = dataSource.getConnection()) {
-            // 자동 커밋 활성화 (각 DDL 문이 즉시 커밋되도록)
-            connection.setAutoCommit(true);
-            
-            logger.info("데이터베이스 연결 확인: {}", connection.getMetaData().getDatabaseProductName());
-            logger.info("데이터베이스 URL: {}", connection.getMetaData().getURL());
-            logger.info("현재 스키마: {}", connection.getSchema());
-            
-            DatabaseMetaData metaData = connection.getMetaData();
+        try {
+            // jdbcTemplate을 사용하여 커넥션 풀 관리 (더 안전함)
+            logger.info("데이터베이스 테이블 확인 시작");
             
             // users 테이블 확인 및 생성
-            boolean usersTableExists = tableExists(metaData, "users");
+            boolean usersTableExists = tableExistsDirect();
             logger.info("users 테이블 존재 여부: {}", usersTableExists);
             if (!usersTableExists) {
                 logger.warn("users 테이블이 없습니다. 생성합니다...");
                 createUsersTable();
                 // 생성 후 다시 확인
-                if (tableExists(metaData, "users")) {
+                if (tableExistsDirect()) {
                     logger.info("✓ users 테이블 생성 성공");
                 } else {
-                    logger.error("✗ users 테이블 생성 실패 - 테이블이 여전히 존재하지 않습니다");
+                    logger.error("✗ users 테이블 생성 실패");
                     throw new RuntimeException("users 테이블 생성 실패");
                 }
             } else {
@@ -136,12 +123,12 @@ public class DataInitializer implements CommandLineRunner {
             }
             
             // posts 테이블 확인 및 생성
-            boolean postsTableExists = tableExists(metaData, "posts");
+            boolean postsTableExists = tableExistsDirect("posts");
             logger.info("posts 테이블 존재 여부: {}", postsTableExists);
             if (!postsTableExists) {
                 logger.warn("posts 테이블이 없습니다. 생성합니다...");
                 createPostsTable();
-                if (tableExists(metaData, "posts")) {
+                if (tableExistsDirect("posts")) {
                     logger.info("✓ posts 테이블 생성 성공");
                 } else {
                     logger.error("✗ posts 테이블 생성 실패");
@@ -152,12 +139,12 @@ public class DataInitializer implements CommandLineRunner {
             }
             
             // chat_messages 테이블 확인 및 생성
-            boolean chatMessagesTableExists = tableExists(metaData, "chat_messages");
+            boolean chatMessagesTableExists = tableExistsDirect("chat_messages");
             logger.info("chat_messages 테이블 존재 여부: {}", chatMessagesTableExists);
             if (!chatMessagesTableExists) {
                 logger.warn("chat_messages 테이블이 없습니다. 생성합니다...");
                 createChatMessagesTable();
-                if (tableExists(metaData, "chat_messages")) {
+                if (tableExistsDirect("chat_messages")) {
                     logger.info("✓ chat_messages 테이블 생성 성공");
                 } else {
                     logger.error("✗ chat_messages 테이블 생성 실패");
@@ -177,31 +164,22 @@ public class DataInitializer implements CommandLineRunner {
             throw new RuntimeException("테이블 초기화 실패", e);
         }
     }
-
-    private boolean tableExists(DatabaseMetaData metaData, String tableName) throws Exception {
-        // PostgreSQL에서는 여러 방법으로 확인
-        // 방법 1: getTables로 확인 (소문자, 대문자, 원본 모두 시도)
-        String[] patterns = {tableName.toLowerCase(), tableName.toUpperCase(), tableName};
-        for (String pattern : patterns) {
-            try (ResultSet tables = metaData.getTables(null, "public", pattern, new String[]{"TABLE"})) {
-                if (tables.next()) {
-                    logger.debug("테이블 존재 확인 (패턴: {}): {} = true", pattern, tableName);
-                    return true;
-                }
-            }
-        }
-        
-        // 방법 2: 직접 SQL 쿼리로 확인 (더 확실함)
+    
+    private boolean tableExistsDirect() {
+        return tableExistsDirect("users");
+    }
+    
+    private boolean tableExistsDirect(String tableName) {
         try {
             String sql = "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?)";
             Boolean exists = jdbcTemplate.queryForObject(sql, Boolean.class, tableName.toLowerCase());
-            logger.debug("테이블 존재 확인 (SQL): {} = {}", tableName, exists);
             return exists != null && exists;
         } catch (Exception e) {
-            logger.warn("SQL로 테이블 확인 중 오류 (무시): {}", e.getMessage());
+            logger.warn("테이블 확인 중 오류 (테이블이 없을 수 있음): {}", e.getMessage());
             return false;
         }
     }
+
 
     private void createUsersTable() {
         // PostgreSQL에서 스키마 명시
