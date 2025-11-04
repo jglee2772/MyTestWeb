@@ -16,22 +16,12 @@ spring:
   # JPA 설정
   jpa:
     hibernate:
-      ddl-auto: update  # 기존 테이블 업데이트 (데이터 유지)
+      ddl-auto: validate  # DataInitializer가 테이블을 생성하므로 validate만 수행
     show-sql: false
-    open-in-view: false  # JPA open-in-view 경고 해결
+    open-in-view: false
     properties:
       hibernate:
-        # PostgreSQLDialect는 자동 감지되므로 명시 불필요 (경고 해결)
         format_sql: false
-    defer-datasource-initialization: false  # schema.sql이 Hibernate 초기화 전에 실행되도록
-  
-  # 스키마 및 초기 데이터 로드
-  sql:
-    init:
-      mode: always
-      schema-locations: classpath:schema.sql  # 테이블 생성 (CREATE TABLE IF NOT EXISTS 사용)
-      data-locations: classpath:data.sql      # 초기 데이터 삽입
-      continue-on-error: true  # 중복 데이터 에러 무시
   
   # H2 콘솔 비활성화 (프로덕션에서는 보안상 비활성화)
   h2:

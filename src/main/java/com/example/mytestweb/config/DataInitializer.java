@@ -7,12 +7,19 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.core.annotation.Order;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
+import javax.sql.DataSource;
+import java.sql.Connection;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
 import java.util.Optional;
 
 @Component
+@Order(1)  // 다른 초기화보다 먼저 실행
 public class DataInitializer implements CommandLineRunner {
 
     private static final Logger logger = LoggerFactory.getLogger(DataInitializer.class);
@@ -23,9 +30,18 @@ public class DataInitializer implements CommandLineRunner {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private DataSource dataSource;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @Override
     public void run(String... args) throws Exception {
         logger.info("데이터 초기화 시작");
+        
+        // 테이블 존재 여부 확인 및 생성
+        ensureTablesExist();
         // 관리자 계정 확인 및 생성/업데이트
         Optional<User> adminOpt = userRepository.findByUsername("admin");
         if (adminOpt.isEmpty()) {
@@ -88,6 +104,106 @@ public class DataInitializer implements CommandLineRunner {
         }
         
         logger.info("데이터 초기화 완료");
+    }
+
+    private void ensureTablesExist() {
+        try (Connection connection = dataSource.getConnection()) {
+            DatabaseMetaData metaData = connection.getMetaData();
+            
+            // users 테이블 확인
+            boolean usersTableExists = tableExists(metaData, "users");
+            if (!usersTableExists) {
+                logger.info("users 테이블이 없습니다. 생성합니다...");
+                createUsersTable();
+            }
+            
+            // posts 테이블 확인
+            boolean postsTableExists = tableExists(metaData, "posts");
+            if (!postsTableExists) {
+                logger.info("posts 테이블이 없습니다. 생성합니다...");
+                createPostsTable();
+            }
+            
+            // chat_messages 테이블 확인
+            boolean chatMessagesTableExists = tableExists(metaData, "chat_messages");
+            if (!chatMessagesTableExists) {
+                logger.info("chat_messages 테이블이 없습니다. 생성합니다...");
+                createChatMessagesTable();
+            }
+            
+            // 인덱스 생성
+            createIndexes();
+            
+        } catch (Exception e) {
+            logger.error("테이블 확인/생성 중 오류 발생", e);
+            throw new RuntimeException("테이블 초기화 실패", e);
+        }
+    }
+
+    private boolean tableExists(DatabaseMetaData metaData, String tableName) throws Exception {
+        try (ResultSet tables = metaData.getTables(null, null, tableName, null)) {
+            return tables.next();
+        }
+    }
+
+    private void createUsersTable() {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS users (
+                id BIGSERIAL PRIMARY KEY,
+                username VARCHAR(50) NOT NULL UNIQUE,
+                email VARCHAR(100) NOT NULL UNIQUE,
+                name VARCHAR(100) NOT NULL,
+                phone VARCHAR(20) NOT NULL,
+                password VARCHAR(255) NOT NULL,
+                status VARCHAR(20) NOT NULL DEFAULT 'PENDING',
+                is_admin BOOLEAN NOT NULL DEFAULT FALSE,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """;
+        jdbcTemplate.execute(sql);
+        logger.info("users 테이블 생성 완료");
+    }
+
+    private void createPostsTable() {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS posts (
+                id BIGSERIAL PRIMARY KEY,
+                title VARCHAR(200) NOT NULL,
+                content TEXT NOT NULL,
+                author_id BIGINT NOT NULL,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                FOREIGN KEY (author_id) REFERENCES users(id)
+            )
+            """;
+        jdbcTemplate.execute(sql);
+        logger.info("posts 테이블 생성 완료");
+    }
+
+    private void createChatMessagesTable() {
+        String sql = """
+            CREATE TABLE IF NOT EXISTS chat_messages (
+                id BIGSERIAL PRIMARY KEY,
+                username VARCHAR(50) NOT NULL,
+                message TEXT NOT NULL,
+                message_type VARCHAR(20) NOT NULL DEFAULT 'CHAT',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+            """;
+        jdbcTemplate.execute(sql);
+        logger.info("chat_messages 테이블 생성 완료");
+    }
+
+    private void createIndexes() {
+        try {
+            jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_users_username ON users(username)");
+            jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_users_email ON users(email)");
+            jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_users_status ON users(status)");
+            jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_chat_messages_created_at ON chat_messages(created_at)");
+            jdbcTemplate.execute("CREATE INDEX IF NOT EXISTS idx_posts_author_id ON posts(author_id)");
+            logger.debug("인덱스 생성 완료");
+        } catch (Exception e) {
+            logger.warn("인덱스 생성 중 오류 (이미 존재할 수 있음): {}", e.getMessage());
+        }
     }
 }
 
