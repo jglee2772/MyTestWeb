@@ -40,9 +40,7 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         logger.info("데이터 초기화 시작");
         
-        // 테이블 존재 여부 확인 및 생성 (schema.sql이 실행되지 않은 경우를 대비)
-        ensureTablesExist();
-        
+        // Hibernate가 ddl-auto: update로 테이블을 생성하므로, 여기서는 사용자 데이터만 관리
         // 관리자 계정 확인 및 생성/업데이트
         Optional<User> adminOpt = userRepository.findByUsername("admin");
         if (adminOpt.isEmpty()) {
