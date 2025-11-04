@@ -16,20 +16,21 @@ spring:
   # JPA 설정
   jpa:
     hibernate:
-      ddl-auto: update  # 테이블이 없으면 자동 생성
+      # ⚠️ 주의: create는 매번 테이블을 삭제하고 재생성합니다!
+      # 테이블이 생성된 후 반드시 update로 변경하세요!
+      ddl-auto: create  # 테이블 생성 (첫 배포용)
     show-sql: false
     open-in-view: false  # JPA open-in-view 경고 해결
     properties:
       hibernate:
         # PostgreSQLDialect는 자동 감지되므로 명시 불필요 (경고 해결)
         format_sql: false
-    defer-datasource-initialization: false  # schema.sql 실행을 위해 false로 변경
+    defer-datasource-initialization: true  # data.sql 실행을 위해 true로 설정
   
-  # 스키마 및 초기 데이터 로드
+  # 초기 데이터 로드 (Hibernate가 테이블 생성 후 실행)
   sql:
     init:
       mode: always
-      schema-locations: classpath:schema.sql  # 테이블 생성 (없으면 생성)
       data-locations: classpath:data.sql      # 초기 데이터 삽입
       continue-on-error: true  # 중복 데이터 에러 무시
   
