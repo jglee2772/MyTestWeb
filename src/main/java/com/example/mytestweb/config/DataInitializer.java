@@ -3,6 +3,8 @@ package com.example.mytestweb.config;
 import com.example.mytestweb.entity.User;
 import com.example.mytestweb.entity.UserStatus;
 import com.example.mytestweb.repository.UserRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -13,6 +15,8 @@ import java.util.Optional;
 @Component
 public class DataInitializer implements CommandLineRunner {
 
+    private static final Logger logger = LoggerFactory.getLogger(DataInitializer.class);
+
     @Autowired
     private UserRepository userRepository;
 
@@ -21,6 +25,7 @@ public class DataInitializer implements CommandLineRunner {
 
     @Override
     public void run(String... args) throws Exception {
+        logger.info("데이터 초기화 시작");
         // 관리자 계정 확인 및 생성/업데이트
         Optional<User> adminOpt = userRepository.findByUsername("admin");
         if (adminOpt.isEmpty()) {
@@ -34,6 +39,7 @@ public class DataInitializer implements CommandLineRunner {
             admin.setAdmin(true);
             admin.setCreatedAt(java.time.LocalDateTime.now());
             userRepository.save(admin);
+            logger.info("관리자 계정 생성 완료: admin");
         } else {
             User admin = adminOpt.get();
             // 관리자 계정이 있지만 상태가 APPROVED가 아니거나 권한이 없으면 업데이트
@@ -45,6 +51,9 @@ public class DataInitializer implements CommandLineRunner {
                     admin.setPassword(passwordEncoder.encode("password"));
                 }
                 userRepository.save(admin);
+                logger.info("관리자 계정 업데이트 완료: admin");
+            } else {
+                logger.debug("관리자 계정 이미 존재: admin");
             }
         }
 
@@ -61,6 +70,7 @@ public class DataInitializer implements CommandLineRunner {
             demoUser.setAdmin(false);
             demoUser.setCreatedAt(java.time.LocalDateTime.now());
             userRepository.save(demoUser);
+            logger.info("데모 사용자 계정 생성 완료: demo_user");
         } else {
             User demoUser = demoOpt.get();
             // 데모 사용자 계정이 있지만 상태가 APPROVED가 아니면 업데이트
@@ -71,8 +81,13 @@ public class DataInitializer implements CommandLineRunner {
                     demoUser.setPassword(passwordEncoder.encode("password"));
                 }
                 userRepository.save(demoUser);
+                logger.info("데모 사용자 계정 업데이트 완료: demo_user");
+            } else {
+                logger.debug("데모 사용자 계정 이미 존재: demo_user");
             }
         }
+        
+        logger.info("데이터 초기화 완료");
     }
 }
 
