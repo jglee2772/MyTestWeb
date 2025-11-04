@@ -16,7 +16,9 @@ spring:
   # JPA 설정
   jpa:
     hibernate:
-      ddl-auto: update  # 프로덕션에서는 데이터 유지
+      # 주의: create는 매번 테이블을 삭제하고 재생성하므로 데이터가 사라집니다!
+      # 첫 배포 후 반드시 update로 변경하세요!
+      ddl-auto: create  # 테이블 생성 후 update로 변경 필요
     show-sql: false
     open-in-view: false  # JPA open-in-view 경고 해결
     properties:
