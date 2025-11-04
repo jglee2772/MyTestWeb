@@ -45,17 +45,9 @@ public class AdminController {
         
         // 승인 대기 중인 사용자 목록
         List<User> pendingUsers = userRepository.findByStatus(UserStatus.PENDING);
-        System.out.println("승인 대기 사용자 수: " + pendingUsers.size());
-        for (User user : pendingUsers) {
-            System.out.println("대기 중인 사용자: " + user.getUsername() + " - " + user.getStatus());
-        }
         
-        // 모든 사용자 상태 확인
+        // 모든 사용자 목록
         List<User> allUsers = userRepository.findAll();
-        System.out.println("=== 모든 사용자 상태 ===");
-        for (User user : allUsers) {
-            System.out.println("사용자: " + user.getUsername() + " - 상태: " + user.getStatus() + " - 관리자: " + user.isAdmin());
-        }
         
         model.addAttribute("pendingUsers", pendingUsers);
         model.addAttribute("allUsers", allUsers);
@@ -117,13 +109,11 @@ public class AdminController {
         
         // 관리자 본인은 삭제할 수 없도록 방지
         if (userToDelete.getId().equals(currentUser.getId())) {
-            System.out.println("관리자 본인은 삭제할 수 없습니다: " + currentUsername);
             return "redirect:/admin";
         }
         
         // 사용자 삭제
         userRepository.delete(userToDelete);
-        System.out.println("사용자 삭제됨: " + userToDelete.getUsername());
         
         return "redirect:/admin";
     }
@@ -144,11 +134,7 @@ public class AdminController {
         }
         
         // 채팅 메시지 수동 정리
-        int deletedCount = chatCleanupService.manualCleanup(days);
-        
-        if (deletedCount >= 0) {
-            System.out.println("관리자가 채팅 메시지를 정리했습니다: " + deletedCount + "개 삭제 (" + days + "일 이전)");
-        }
+        chatCleanupService.manualCleanup(days);
         
         return "redirect:/admin";
     }

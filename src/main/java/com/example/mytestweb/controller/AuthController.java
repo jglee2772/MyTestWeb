@@ -61,8 +61,6 @@ public class AuthController {
         user.setStatus(UserStatus.PENDING);
         userRepository.save(user);
         
-        System.out.println("새 사용자 등록됨: " + username + " - 상태: " + user.getStatus());
-        
         model.addAttribute("success", "회원가입이 완료되었습니다. 관리자 승인 후 로그인 가능합니다.");
         return "login";
     }

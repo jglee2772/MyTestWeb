@@ -18,9 +18,10 @@ spring:
     hibernate:
       ddl-auto: update  # 프로덕션에서는 데이터 유지
     show-sql: false
+    open-in-view: false  # JPA open-in-view 경고 해결
     properties:
       hibernate:
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        # PostgreSQLDialect는 자동 감지되므로 명시 불필요 (경고 해결)
         format_sql: false
     defer-datasource-initialization: true
   
@@ -30,6 +31,11 @@ spring:
       mode: always
       data-locations: classpath:data.sql
       continue-on-error: true  # 중복 데이터 에러 무시
+  
+  # H2 콘솔 비활성화 (프로덕션에서는 보안상 비활성화)
+  h2:
+    console:
+      enabled: false
 
 # 로깅 설정
 logging:
@@ -37,5 +43,7 @@ logging:
     com.example.mytestweb: INFO
     com.example.mytestweb.config.DataInitializer: INFO  # 초기화 로그 확인
     com.example.mytestweb.service.CustomUserDetailsService: INFO  # 로그인 로그 확인
-    org.springframework.web: INFO
+    org.springframework.web: WARN  # HandlerMappingIntrospector 경고 억제
     org.hibernate: WARN
+    org.hibernate.orm.deprecation: WARN  # PostgreSQLDialect 경고 억제
+    org.hibernate.engine.jdbc.spi.SqlExceptionHelper: ERROR  # "table does not exist, skipping" 경고 억제
