@@ -16,7 +16,7 @@ spring:
   # JPA 설정
   jpa:
     hibernate:
-      ddl-auto: create-drop  # 처음 배포 시 테이블 생성
+      ddl-auto: update  # 프로덕션에서는 데이터 유지
     show-sql: false
     properties:
       hibernate:
@@ -24,11 +24,12 @@ spring:
         format_sql: false
     defer-datasource-initialization: true
   
-  # 초기 데이터 로드
+  # 초기 데이터 로드 (데이터가 없을 때만 실행)
   sql:
     init:
       mode: always
       data-locations: classpath:data.sql
+      continue-on-error: true  # 중복 데이터 에러 무시
 
 # 로깅 설정
 logging:
