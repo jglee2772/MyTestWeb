@@ -22,19 +22,22 @@ public class CustomUserDetailsService implements UserDetailsService {
 
     @Override
     public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
-        System.out.println("로그인 시도: " + username);
+        System.out.println("[로그인 시도] 사용자명: " + username);
         
         User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> {
-                    System.out.println("사용자를 찾을 수 없습니다: " + username);
+                    System.out.println("[로그인 실패] 사용자를 찾을 수 없습니다: " + username);
                     return new UsernameNotFoundException("사용자를 찾을 수 없습니다: " + username);
                 });
 
-        System.out.println("사용자 찾음: " + user.getUsername() + ", 상태: " + user.getStatus() + ", 관리자: " + user.isAdmin());
+        System.out.println("[사용자 정보] 아이디: " + user.getUsername() + 
+                          ", 상태: " + user.getStatus() + 
+                          ", 관리자: " + user.isAdmin() +
+                          ", 비밀번호 해시: " + (user.getPassword() != null ? user.getPassword().substring(0, Math.min(20, user.getPassword().length())) + "..." : "null"));
 
         // 승인되지 않은 사용자는 로그인 불가
         if (user.getStatus() != UserStatus.APPROVED) {
-            System.out.println("승인되지 않은 사용자: " + username);
+            System.out.println("[로그인 실패] 승인되지 않은 사용자: " + username + " (상태: " + user.getStatus() + ")");
             throw new UsernameNotFoundException("승인되지 않은 사용자입니다: " + username);
         }
 
@@ -43,11 +46,13 @@ public class CustomUserDetailsService implements UserDetailsService {
         // 관리자 권한 추가
         if (user.isAdmin()) {
             authorities.add(new SimpleGrantedAuthority("ROLE_ADMIN"));
+            System.out.println("[권한 설정] 관리자 권한 부여: " + username);
         }
         
         // 일반 사용자 권한 추가
         authorities.add(new SimpleGrantedAuthority("ROLE_USER"));
 
+        System.out.println("[로그인 성공] 사용자명: " + username + ", 권한: " + authorities);
         return org.springframework.security.core.userdetails.User.builder()
                 .username(user.getUsername())
                 .password(user.getPassword())

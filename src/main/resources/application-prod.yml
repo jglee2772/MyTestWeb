@@ -35,5 +35,7 @@ spring:
 logging:
   level:
     com.example.mytestweb: INFO
+    com.example.mytestweb.config.DataInitializer: INFO  # 초기화 로그 확인
+    com.example.mytestweb.service.CustomUserDetailsService: INFO  # 로그인 로그 확인
     org.springframework.web: INFO
     org.hibernate: WARN
