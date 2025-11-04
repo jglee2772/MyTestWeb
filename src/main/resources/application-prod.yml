@@ -18,7 +18,7 @@ spring:
     hibernate:
       # ⚠️ 주의: create는 매번 테이블을 삭제하고 재생성합니다!
       # 테이블이 생성된 후 반드시 update로 변경하세요!
-      ddl-auto: create  # 테이블 생성 (첫 배포용)
+      ddl-auto: update  # 테이블 생성 (첫 배포용)
     show-sql: false
     open-in-view: false  # JPA open-in-view 경고 해결
     properties:
