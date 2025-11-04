@@ -16,9 +16,7 @@ spring:
   # JPA 설정
   jpa:
     hibernate:
-      # 주의: create는 매번 테이블을 삭제하고 재생성하므로 데이터가 사라집니다!
-      # 첫 배포 후 반드시 update로 변경하세요!
-      ddl-auto: create  # 테이블 생성 후 update로 변경 필요
+      ddl-auto: none  # schema.sql을 사용하므로 none으로 설정
     show-sql: false
     open-in-view: false  # JPA open-in-view 경고 해결
     properties:
@@ -27,11 +25,12 @@ spring:
         format_sql: false
     defer-datasource-initialization: true
   
-  # 초기 데이터 로드 (데이터가 없을 때만 실행)
+  # 스키마 및 초기 데이터 로드
   sql:
     init:
       mode: always
-      data-locations: classpath:data.sql
+      schema-locations: classpath:schema.sql  # 테이블 생성
+      data-locations: classpath:data.sql      # 초기 데이터 삽입
       continue-on-error: true  # 중복 데이터 에러 무시
   
   # H2 콘솔 비활성화 (프로덕션에서는 보안상 비활성화)
