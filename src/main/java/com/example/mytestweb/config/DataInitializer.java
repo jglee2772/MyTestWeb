@@ -40,8 +40,9 @@ public class DataInitializer implements CommandLineRunner {
     public void run(String... args) throws Exception {
         logger.info("데이터 초기화 시작");
         
-        // 테이블 존재 여부 확인 및 생성
+        // 테이블 존재 여부 확인 및 생성 (schema.sql이 실행되지 않은 경우를 대비)
         ensureTablesExist();
+        
         // 관리자 계정 확인 및 생성/업데이트
         Optional<User> adminOpt = userRepository.findByUsername("admin");
         if (adminOpt.isEmpty()) {
@@ -108,31 +109,49 @@ public class DataInitializer implements CommandLineRunner {
 
     private void ensureTablesExist() {
         try (Connection connection = dataSource.getConnection()) {
+            logger.info("데이터베이스 연결 확인: {}", connection.getMetaData().getDatabaseProductName());
             DatabaseMetaData metaData = connection.getMetaData();
             
             // users 테이블 확인
             boolean usersTableExists = tableExists(metaData, "users");
+            logger.info("users 테이블 존재 여부: {}", usersTableExists);
             if (!usersTableExists) {
-                logger.info("users 테이블이 없습니다. 생성합니다...");
+                logger.warn("users 테이블이 없습니다. 생성합니다...");
                 createUsersTable();
+                // 생성 후 다시 확인
+                if (tableExists(metaData, "users")) {
+                    logger.info("users 테이블 생성 성공");
+                } else {
+                    logger.error("users 테이블 생성 실패");
+                }
+            } else {
+                logger.info("users 테이블 이미 존재");
             }
             
             // posts 테이블 확인
             boolean postsTableExists = tableExists(metaData, "posts");
+            logger.info("posts 테이블 존재 여부: {}", postsTableExists);
             if (!postsTableExists) {
-                logger.info("posts 테이블이 없습니다. 생성합니다...");
+                logger.warn("posts 테이블이 없습니다. 생성합니다...");
                 createPostsTable();
+            } else {
+                logger.info("posts 테이블 이미 존재");
             }
             
             // chat_messages 테이블 확인
             boolean chatMessagesTableExists = tableExists(metaData, "chat_messages");
+            logger.info("chat_messages 테이블 존재 여부: {}", chatMessagesTableExists);
             if (!chatMessagesTableExists) {
-                logger.info("chat_messages 테이블이 없습니다. 생성합니다...");
+                logger.warn("chat_messages 테이블이 없습니다. 생성합니다...");
                 createChatMessagesTable();
+            } else {
+                logger.info("chat_messages 테이블 이미 존재");
             }
             
             // 인덱스 생성
             createIndexes();
+            
+            logger.info("테이블 확인/생성 완료");
             
         } catch (Exception e) {
             logger.error("테이블 확인/생성 중 오류 발생", e);
@@ -141,8 +160,27 @@ public class DataInitializer implements CommandLineRunner {
     }
 
     private boolean tableExists(DatabaseMetaData metaData, String tableName) throws Exception {
-        try (ResultSet tables = metaData.getTables(null, null, tableName, null)) {
-            return tables.next();
+        // PostgreSQL에서는 여러 방법으로 확인
+        // 방법 1: getTables로 확인 (소문자, 대문자, 원본 모두 시도)
+        String[] patterns = {tableName.toLowerCase(), tableName.toUpperCase(), tableName};
+        for (String pattern : patterns) {
+            try (ResultSet tables = metaData.getTables(null, "public", pattern, new String[]{"TABLE"})) {
+                if (tables.next()) {
+                    logger.debug("테이블 존재 확인 (패턴: {}): {} = true", pattern, tableName);
+                    return true;
+                }
+            }
+        }
+        
+        // 방법 2: 직접 SQL 쿼리로 확인 (더 확실함)
+        try {
+            String sql = "SELECT EXISTS (SELECT FROM information_schema.tables WHERE table_schema = 'public' AND table_name = ?)";
+            Boolean exists = jdbcTemplate.queryForObject(sql, Boolean.class, tableName.toLowerCase());
+            logger.debug("테이블 존재 확인 (SQL): {} = {}", tableName, exists);
+            return exists != null && exists;
+        } catch (Exception e) {
+            logger.warn("SQL로 테이블 확인 중 오류 (무시): {}", e.getMessage());
+            return false;
         }
     }
 
