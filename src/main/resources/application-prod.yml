@@ -23,7 +23,7 @@ spring:
   # JPA 설정
   jpa:
     hibernate:
-      ddl-auto: validate  # DataInitializer가 테이블을 생성하므로 validate만 수행
+      ddl-auto: none  # DataInitializer가 테이블을 생성하므로 Hibernate는 스키마 관리 안 함
     show-sql: false
     open-in-view: false
     properties:
